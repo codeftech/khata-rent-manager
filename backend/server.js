@@ -16,6 +16,28 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: "4mb" }));
 
+// 🔒 Optional password protection (HTTP Basic Auth).
+// Turns ON automatically only when AUTH_USER and AUTH_PASS are set (via env / Coolify).
+// Password is NEVER stored in code — it lives in the server's environment variables.
+const AUTH_USER = process.env.AUTH_USER || "";
+const AUTH_PASS = process.env.AUTH_PASS || "";
+if (AUTH_USER && AUTH_PASS) {
+  app.use((req, res, next) => {
+    const header = req.headers.authorization || "";
+    const [scheme, encoded] = header.split(" ");
+    if (scheme === "Basic" && encoded) {
+      const decoded = Buffer.from(encoded, "base64").toString("utf8");
+      const i = decoded.indexOf(":");
+      const user = decoded.slice(0, i);
+      const pass = decoded.slice(i + 1);
+      if (user === AUTH_USER && pass === AUTH_PASS) return next();
+    }
+    res.set("WWW-Authenticate", 'Basic realm="Khata"');
+    return res.status(401).send("Khata: login required.");
+  });
+  console.log("  🔒  Password protection ON (Basic Auth)");
+}
+
 const FRONTEND = path.join(__dirname, "..", "frontend");
 app.use(express.static(FRONTEND));
 
