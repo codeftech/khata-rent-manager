@@ -7,6 +7,7 @@ const API = "";
 let DB = { houses: [], tenants: [], payments: [], ebills: [], motorbills: [] };
 let selHouse = "";      // dashboard house filter ("" = all)
 let openFlatId = null;  // currently-open dossier
+let editPayId = null;   // dossier: id of payment being edited (null = new)
 
 /* ---------- api ---------- */
 async function api(method, path, body){
@@ -165,11 +166,16 @@ async function collectRent(tid){
   const amt=+val("d_p_amount")||0; if(amt<=0) return toast("Amount daalein", true);
   const forMonth=val("d_p_month")||curMonth();
   const body={ tenantId:tid, amount:amt, date:val("d_p_date")||today(), forMonth, mode:val("d_p_mode")||"Cash", note:"" };
-  try{ await api("POST","/api/payments", body); await refresh(); toast("Rent received 🎉"); launchConfetti(); openReceipt(tid, forMonth); }
-  catch(e){ toast(e.message,true); }
+  try{
+    if(editPayId){ await api("PUT","/api/payments/"+editPayId, body); editPayId=null; await refresh(); toast("Payment updated ✓"); }
+    else { await api("POST","/api/payments", body); await refresh(); toast("Rent received 🎉"); launchConfetti(); openReceipt(tid, forMonth); }
+  }catch(e){ toast(e.message,true); }
 }
+function editPaymentD(id){ const p=DB.payments.find(x=>x.id===id); if(!p) return; editPayId=id;
+  set("d_p_amount",p.amount);set("d_p_month",p.forMonth);set("d_p_date",p.date);set("d_p_mode",p.mode);
+  toast("Edit mode — badlaav karke 'Update' dabayein"); const el=document.getElementById("d_p_amount"); if(el){ el.focus(); el.scrollIntoView({block:"center",behavior:"smooth"}); } }
 async function delPayment(id){ if(!confirm("Ye payment delete karein?")) return;
-  try{ await api("DELETE","/api/payments/"+id); await refresh(); toast("Deleted"); }catch(e){ toast(e.message,true); } }
+  try{ await api("DELETE","/api/payments/"+id); if(editPayId===id) editPayId=null; await refresh(); toast("Deleted"); }catch(e){ toast(e.message,true); } }
 
 /* ---------- bijli / own meter (from dossier) ---------- */
 function dCalcElec(){ const prev=+val("d_e_prev")||0, curr=+val("d_e_curr")||0, rate=+val("d_e_rate")||0;
@@ -301,6 +307,24 @@ function renderDash(){
   const pct=expThis>0?Math.min(100,Math.round(collThis/expThis*100)):0;
   setGauge(pct);
 
+  // selectable month view
+  if(!val("dashMonth")) set("dashMonth",cm);
+  const dm=val("dashMonth")||cm;
+  let mExp=0,mColl=0,mPc=0,mUc=0,mBijli=0;
+  ts.forEach(t=>{ if(t.status==="vacant")return; mExp+=+t.rent||0;
+    const got=DB.payments.filter(p=>p.tenantId===t.id&&p.forMonth===dm).reduce((s,p)=>s+(+p.amount||0),0);
+    mColl+=got; if((+t.rent||0)>0&&got>=(+t.rent||0))mPc++; else mUc++; });
+  DB.ebills.forEach(b=>{ if(ids.has(b.tenantId)&&b.month===dm) mBijli+=+b.amount||0; });
+  DB.motorbills.filter(m=>m.month===dm).forEach(m=>ts.forEach(t=>{ if(t.houseId===m.houseId&&t.status!=="vacant") mBijli+=+m.shareAmount||0; }));
+  const mv=document.getElementById("monthView");
+  if(mv){ mv.innerHTML=
+    statN("Rent expected",mExp,"money","") +
+    statN("Rent collected",mColl,"money","ok") +
+    statN("Rent pending",Math.max(0,mExp-mColl),"money",(mExp-mColl)>0?"warn":"ok") +
+    statN("Bijli + Motor billed",mBijli,"money","cyan") +
+    statN("Flats paid",mPc,"int","ok",mPc+" paid · "+mUc+" pending");
+    animateCounts(mv); }
+
   // overdue
   let rows="",any=false;
   ts.slice().sort((a,b)=>(computeT(b).balance+computeT(b).elec)-(computeT(a).balance+computeT(a).elec)).forEach(t=>{
@@ -309,7 +333,7 @@ function renderDash(){
       `<td class="r money" style="color:${c.balance>0?"var(--rose)":"var(--ink-soft)"}">${money(Math.max(0,c.balance))}</td>`+
       `<td class="r money" style="color:${c.elec>0?"var(--cyan)":"var(--ink-soft)"}">${money(c.elec)}</td>`+
       `<td class="r money" style="color:var(--rose)">${money(tot)}</td>`+
-      `<td class="r"><span class="chev">›</span></td></tr>`;
+      `<td class="r"><button class="btn sm ok" onclick="event.stopPropagation();waShare('${t.id}')" title="WhatsApp reminder">Remind</button></td></tr>`;
   });
   document.querySelector("#overdueTbl tbody").innerHTML=rows;
   document.getElementById("overdueTbl").hidden=!any;
@@ -415,8 +439,8 @@ function renderProfiles(){
 }
 
 /* ---------- flat dossier drawer (the hub) ---------- */
-function openFlat(tid){ openFlatId=tid; renderFlat(tid); document.getElementById("flatDrawer").classList.add("show"); document.body.style.overflow="hidden"; }
-function closeFlat(){ openFlatId=null; document.getElementById("flatDrawer").classList.remove("show"); document.body.style.overflow=""; }
+function openFlat(tid){ openFlatId=tid; editPayId=null; renderFlat(tid); document.getElementById("flatDrawer").classList.add("show"); document.body.style.overflow="hidden"; }
+function closeFlat(){ openFlatId=null; editPayId=null; document.getElementById("flatDrawer").classList.remove("show"); document.body.style.overflow=""; }
 function renderFlat(tid){
   const t=DB.tenants.find(x=>x.id===tid); if(!t){ closeFlat(); return; }
   const c=computeT(t); const vac=t.status==="vacant"; const cm=curMonth();
@@ -426,7 +450,7 @@ function renderFlat(tid){
 
   // rent history
   const pays=DB.payments.filter(p=>p.tenantId===tid).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  const payRows=pays.map(p=>`<tr><td>${fmtDate(p.date)}</td><td>${monthLabel(p.forMonth)}</td><td class="r money" style="color:var(--emerald)">${money(p.amount)}</td><td>${esc(p.mode||"")}</td><td class="r"><button class="btn sm danger" onclick="delPayment('${p.id}')">✕</button></td></tr>`).join("")
+  const payRows=pays.map(p=>`<tr><td>${fmtDate(p.date)}</td><td>${monthLabel(p.forMonth)}</td><td class="r money" style="color:var(--emerald)">${money(p.amount)}</td><td>${esc(p.mode||"")}</td><td class="r"><button class="btn sm ghost" onclick="editPaymentD('${p.id}')">Edit</button> <button class="btn sm danger" onclick="delPayment('${p.id}')">✕</button></td></tr>`).join("")
     || `<tr><td colspan="5" class="soft" style="text-align:center">Abhi koi rent entry nahi.</td></tr>`;
 
   // bijli history (own meter)
@@ -785,5 +809,6 @@ document.addEventListener("click",e=>{ if(e.target.id==="ledgerModal") closeModa
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeModal(); closeInv(); closeRcpt(); closeFlat(); } });
 
 /* ---------- init ---------- */
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{})); }
 resetHouseForm(); resetTenantForm(); resetMotorForm(); loadAuthStatus();
 refresh().catch(()=>{ setConn(false); toast("Server se connect nahi hua — 'npm start' chalayein",true); });

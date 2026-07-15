@@ -152,6 +152,9 @@ body{margin:0;color:var(--ink);font-family:var(--f);line-height:1.5;overflow-x:h
 .stat .sub{font-size:11px;color:var(--ink-soft);font-weight:500;margin-top:3px}
 .val.gold{color:var(--gold-hi)} .val.ok{color:var(--emerald)} .val.due{color:var(--rose)} .val.warn{color:var(--amber)} .val.cyan{color:var(--cyan)}
 
+.stats.mini{grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:12px;margin-bottom:0}
+.monthhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.monthhead input{width:auto}
 .two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;margin-bottom:20px}
 @media(max-width:820px){.two-col{grid-template-columns:1fr}}
 
