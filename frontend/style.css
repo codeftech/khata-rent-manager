@@ -276,6 +276,30 @@ tbody tr:hover td{background:rgba(200,215,240,.04)}
 .empty{text-align:center;padding:34px 14px;color:var(--ink-soft);font-weight:500;font-size:14px}
 .pill-total{font-family:var(--f);font-weight:700;font-size:12px;color:#fff;background:rgba(200,215,240,.06);border:1px solid var(--line-bright);padding:6px 14px;border-radius:20px;white-space:nowrap}
 
+/* due chips + due tracker */
+.duechip{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.02em;padding:6px 12px;border-radius:20px;margin-top:12px;border:1px solid transparent}
+.duechip .dc-dot{width:7px;height:7px;border-radius:50%;flex:none;background:currentColor;box-shadow:0 0 8px currentColor}
+.duechip.ok{color:var(--emerald);background:rgba(84,227,161,.12);border-color:rgba(84,227,161,.3)}
+.duechip.warn{color:var(--amber);background:rgba(255,206,125,.12);border-color:rgba(255,206,125,.3)}
+.duechip.due{color:var(--rose);background:rgba(255,107,138,.12);border-color:rgba(255,107,138,.3)}
+.duechip.soft{color:var(--ink-soft);background:rgba(200,215,240,.06);border-color:var(--line-bright)}
+.dr-sec{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dr-sec .duechip{margin-top:0}
+.duegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px}
+.duetile{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;cursor:pointer;
+  background:rgba(200,215,240,.03);border:1px solid var(--line);border-left-width:3px;transition:.2s cubic-bezier(.22,1,.36,1)}
+.duetile:hover{transform:translateY(-2px);background:rgba(200,215,240,.06);box-shadow:var(--shadow-sm)}
+.duetile.due{border-left-color:var(--rose)} .duetile.warn{border-left-color:var(--amber)}
+.duetile.ok{border-left-color:var(--emerald)} .duetile.soft{border-left-color:var(--ink-dim)}
+.dt-day{flex:none;width:44px;text-align:center;font-family:var(--f-d);line-height:1}
+.dt-day b{font-size:23px;font-weight:800;color:#fff;display:block}
+.dt-day span{font-size:9px;font-weight:700;color:var(--ink-soft);text-transform:uppercase}
+.dt-mid{flex:1;min-width:0}
+.dt-name{font-weight:700;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dt-status{font-size:11px;font-weight:600;color:var(--ink-soft);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.duetile.due .dt-status{color:var(--rose)} .duetile.warn .dt-status{color:var(--amber)} .duetile.ok .dt-status{color:var(--emerald)}
+.dt-ok{color:var(--emerald);font-weight:800;font-size:16px}
+
 /* profile cards */
 .profilegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;margin-bottom:24px}
 .pcard{padding:20px;position:relative;overflow:hidden;cursor:pointer;transition:.32s cubic-bezier(.22,1,.36,1);animation:rise .6s cubic-bezier(.22,1,.36,1) both}

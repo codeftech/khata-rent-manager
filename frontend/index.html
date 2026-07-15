@@ -83,6 +83,12 @@
       </div>
 
       <div class="card glass">
+        <div class="card-head"><h2>Rent due tracker</h2><p>har flat ki apni date · overdue sabse upar</p></div>
+        <div class="duegrid" id="dueTracker"></div>
+        <div class="empty" id="dueEmpty" hidden>Koi occupied flat nahi.</div>
+      </div>
+
+      <div class="card glass">
         <div class="card-head"><h2>Baaki / Overdue</h2><p>jinka rent ya bijli baaki hai — tap to open dossier</p></div>
         <div class="tblwrap"><table id="overdueTbl">
           <thead><tr><th>Ghar</th><th>Flat</th><th>Tenant</th><th class="r">Rent baaki</th><th class="r">Bijli+Motor</th><th class="r">Total</th><th></th></tr></thead>
@@ -104,6 +110,7 @@
           <label class="f">Father / Guardian<input id="t_father" placeholder="optional"></label>
           <label class="f">Phone<input id="t_phone" placeholder="98765 43210"></label>
           <label class="f">Fixed monthly rent (₹)<input id="t_rent" type="number" min="0" placeholder="8500"></label>
+          <label class="f">Rent due day (1–31)<input id="t_dueday" type="number" min="1" max="31" placeholder="5"></label>
           <label class="f">Move-in month<input id="t_movein" type="month"></label>
           <label class="f">Status<select id="t_status"><option value="occupied">Occupied</option><option value="vacant">Vacant (khaali)</option></select></label>
         </div>
@@ -150,6 +157,7 @@
         <div class="grid">
           <label class="f">Ghar ka naam<input id="h_name" placeholder="Musa Mention"></label>
           <label class="f">Address / area<input id="h_addr" placeholder="Lala Lajpat Rai"></label>
+          <label class="f">Motor due day (1–31)<input id="h_motorday" type="number" min="1" max="31" placeholder="15"></label>
           <label class="f">Note<input id="h_note" placeholder="optional"></label>
         </div>
         <div class="actions"><button class="btn gold" onclick="saveHouse()">Save ghar</button><button class="btn ghost" onclick="resetHouseForm()">Clear</button></div>

@@ -64,8 +64,10 @@ function str(v, n) { return String(v == null ? "" : v).slice(0, n); }
 // data-URL image passthrough; drop anything oversized or non-image
 function img(v) { v = String(v == null ? "" : v); return (v.startsWith("data:image/") && v.length <= 3500000) ? v : ""; }
 
+function day1to31(v, def) { const n = Math.round(num(v)) || def; return Math.min(31, Math.max(1, n)); }
 function cleanHouse(b) {
-  return { name: str(b.name, 120), address: str(b.address, 220), note: str(b.note, 300) };
+  return { name: str(b.name, 120), address: str(b.address, 220), note: str(b.note, 300),
+    motorDueDay: day1to31(b.motorDueDay, 15) };
 }
 function cleanTenant(b) {
   // advance & security are tracked separately: agreed (kitna tay hua) vs paid (kitna mila)
@@ -86,6 +88,7 @@ function cleanTenant(b) {
     securityAgreed,
     securityPaid: num(b.securityPaid),
     deposit: num(b.deposit), // legacy — kept for old backups
+    rentDueDay: day1to31(b.rentDueDay, 5),
     moveIn: str(b.moveIn, 7),
     status: b.status === "vacant" ? "vacant" : "occupied",
     note: str(b.note, 300),

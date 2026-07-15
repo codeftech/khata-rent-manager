@@ -41,6 +41,26 @@ function secBal(t){ return Math.max(0,((t.securityAgreed!=null?+t.securityAgreed
 function computeT(t){ const months=t.status==="vacant"?0:monthsElapsed(t.moveIn); const due=months*(+t.rent||0);
   const paid=paidFor(t.id); return {months,due,paid,balance:due-paid,elec:elecDue(t.id),meter:meterDue(t.id),motor:motorDue(t.id),
     advBal:advBal(t),secBal:secBal(t)}; }
+function ord(n){ const s=["th","st","nd","rd"],v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+function midnight(d){ d.setHours(0,0,0,0); return d; }
+// rent due status for THIS calendar month
+function rentDueInfo(t){
+  const dd=Math.min(31,Math.max(1,+t.rentDueDay||5));
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth()+1;
+  const day=Math.min(dd,daysInMonth(y,m));
+  const due=midnight(new Date(y,m-1,day)), t0=midnight(new Date());
+  const diff=Math.round((due-t0)/86400000);
+  const cm=curMonth();
+  const got=DB.payments.filter(p=>p.tenantId===t.id&&p.forMonth===cm).reduce((s,p)=>s+(+p.amount||0),0);
+  const paid=(+t.rent||0)>0 && got>=(+t.rent||0);
+  if(t.status==="vacant") return {day:dd,label:"—",cls:"",over:0};
+  if(paid) return {day:dd,label:"Paid ✓",cls:"ok",over:0};
+  if(diff>0) return {day:dd,label:"Due in "+diff+"d · "+ord(dd),cls:diff<=3?"warn":"soft",over:0};
+  if(diff===0) return {day:dd,label:"Due aaj · "+ord(dd),cls:"warn",over:0};
+  return {day:dd,label:"Overdue "+(-diff)+"d",cls:"due",over:-diff};
+}
+function motorDueDay(hid){ const h=DB.houses.find(x=>x.id===hid); return h&&h.motorDueDay?h.motorDueDay:15; }
 function tName(id){ const t=DB.tenants.find(x=>x.id===id); return t?(t.room+(t.name?" — "+t.name:"")):"—"; }
 function hName(id){ const h=DB.houses.find(x=>x.id===id); return h?h.name:"—"; }
 function scopeTenants(){ return selHouse ? DB.tenants.filter(t=>t.houseId===selHouse) : DB.tenants; }
@@ -94,18 +114,18 @@ function scrollTop(){ window.scrollTo({top:0,behavior:"smooth"}); }
 /* ---------- houses ---------- */
 async function saveHouse(){
   const name=val("h_name").trim(); if(!name) return toast("Ghar ka naam zaroori hai", true);
-  const body={ name, address:val("h_addr").trim(), note:val("h_note").trim() };
+  const body={ name, address:val("h_addr").trim(), note:val("h_note").trim(), motorDueDay:+val("h_motorday")||15 };
   const id=val("h_id");
   try{ await api(id?"PUT":"POST","/api/houses"+(id?"/"+id:""), body); resetHouseForm(); await refresh(); toast("Ghar saved ✓"); }
   catch(e){ toast(e.message,true); }
 }
 function editHouse(id){ const h=DB.houses.find(x=>x.id===id); if(!h) return;
-  set("h_id",h.id);set("h_name",h.name);set("h_addr",h.address);set("h_note",h.note);
+  set("h_id",h.id);set("h_name",h.name);set("h_addr",h.address);set("h_note",h.note);set("h_motorday",h.motorDueDay||15);
   document.getElementById("hFormTitle").textContent="Edit Ghar"; gotoTab("props"); scrollTop(); }
 async function delHouse(id){ const n=DB.tenants.filter(t=>t.houseId===id).length;
   if(!confirm("Ye ghar delete karein?"+(n?" Iske "+n+" flat + unki payments/bijli/motor bhi hat jayenge.":""))) return;
   try{ await api("DELETE","/api/houses/"+id); if(selHouse===id) selHouse=""; await refresh(); toast("Deleted"); }catch(e){ toast(e.message,true); } }
-function resetHouseForm(){ ["h_id","h_name","h_addr","h_note"].forEach(k=>set(k,"")); document.getElementById("hFormTitle").textContent="Naya Ghar / Property"; }
+function resetHouseForm(){ ["h_id","h_name","h_addr","h_note"].forEach(k=>set(k,"")); set("h_motorday",15); document.getElementById("hFormTitle").textContent="Naya Ghar / Property"; }
 
 /* ---------- tenants (flats) ---------- */
 function calcTenantMoney(){
@@ -126,6 +146,7 @@ async function saveTenant(){
     rent:+val("t_rent")||0,
     advanceAgreed:+val("t_advA")||0, advancePaid:+val("t_advP")||0,
     securityAgreed:+val("t_secA")||0, securityPaid:+val("t_secP")||0,
+    rentDueDay:+val("t_dueday")||5,
     moveIn:val("t_movein")||curMonth(), status:val("t_status"), note:val("t_note").trim() };
   const id=val("t_id");
   try{ await api(id?"PUT":"POST","/api/tenants"+(id?"/"+id:""), body); resetTenantForm(); await refresh(); toast("Flat saved ✓"); }
@@ -135,14 +156,14 @@ function editTenant(id){ const t=DB.tenants.find(x=>x.id===id); if(!t) return; c
   set("t_id",t.id);set("t_house",t.houseId);set("t_room",t.room);set("t_name",t.name);set("t_father",t.fatherName);
   set("t_phone",t.phone);set("t_aadhaar",t.aadhaar);set("t_perm",t.permAddress);set("t_rent",t.rent);
   set("t_advA",t.advanceAgreed);set("t_advP",t.advancePaid);
-  set("t_secA",secAgreed(t));set("t_secP",t.securityPaid);
+  set("t_secA",secAgreed(t));set("t_secP",t.securityPaid);set("t_dueday",t.rentDueDay||5);
   set("t_photo",t.photo||"");set("t_aadhaarPhoto",t.aadhaarPhoto||"");
   paintPhoto("t_photoPrev",t.photo||"");paintPhoto("t_aadhaarPrev",t.aadhaarPhoto||"");
   set("t_movein",t.moveIn);set("t_status",t.status);set("t_note",t.note); calcTenantMoney();
   document.getElementById("tFormTitle").textContent="Edit flat / tenant"; gotoTab("flats"); scrollTop(); }
 async function delTenant(id){ if(!confirm("Is flat/tenant ko delete karein? Iski rent + bijli sab hat jayegi.")) return;
   try{ await api("DELETE","/api/tenants/"+id); closeFlat(); await refresh(); toast("Deleted"); }catch(e){ toast(e.message,true); } }
-function resetTenantForm(){ ["t_id","t_room","t_name","t_father","t_phone","t_aadhaar","t_perm","t_rent","t_advA","t_advP","t_secA","t_secP","t_note","t_photo","t_aadhaarPhoto"].forEach(k=>set(k,""));
+function resetTenantForm(){ ["t_id","t_room","t_name","t_father","t_phone","t_aadhaar","t_perm","t_rent","t_dueday","t_advA","t_advP","t_secA","t_secP","t_note","t_photo","t_aadhaarPhoto"].forEach(k=>set(k,""));
   set("t_movein",curMonth()); set("t_status","occupied"); const c=document.getElementById("t_calc"); if(c)c.textContent="";
   paintPhoto("t_photoPrev","");paintPhoto("t_aadhaarPrev","");
   document.getElementById("tFormTitle").textContent="Naya Flat / Tenant"; }
@@ -252,7 +273,7 @@ function renderMotor(){
     }).join("") || '<span class="soft">Is ghar me koi occupied flat nahi.</span>';
     return `<div class="card glass motor-item"><div class="mi-head">
       <div><div class="mi-title">⚙ ${esc(hName(b.houseId))} <span class="soft">· ${monthLabel(b.month)}</span></div>
-        <div class="mi-sub">${b.prev} → ${b.curr} · <b>${b.units} units</b> × ₹${b.rate} = <b>${money(total)}</b> · ÷ ${b.splitCount} = <b style="color:var(--cyan)">${money(b.shareAmount)}/flat</b>${b.note?" · "+esc(b.note):""}</div></div>
+        <div class="mi-sub">${b.prev} → ${b.curr} · <b>${b.units} units</b> × ₹${b.rate} = <b>${money(total)}</b> · ÷ ${b.splitCount} = <b style="color:var(--cyan)">${money(b.shareAmount)}/flat</b> · due ${ord(motorDueDay(b.houseId))} tareekh${b.note?" · "+esc(b.note):""}</div></div>
       <div class="mi-actions"><span class="pill-total">${paidCount}/${flats.length} paid</span>
         <button class="btn sm ghost" onclick="editMotor('${b.id}')">Edit</button>
         <button class="btn sm danger" onclick="delMotor('${b.id}')">✕</button></div>
@@ -341,6 +362,24 @@ function renderDash(){
 
   renderChart(ids);
   renderHouseMini();
+  renderDueTracker(ts);
+}
+function renderDueTracker(ts){
+  const box=document.getElementById("dueTracker"); if(!box) return;
+  const occ=ts.filter(t=>t.status!=="vacant");
+  document.getElementById("dueEmpty").hidden=occ.length>0;
+  const rank={due:0,warn:1,soft:2,ok:3,"":4};
+  const rows=occ.map(t=>({t,di:rentDueInfo(t)}))
+    .sort((a,b)=> (rank[a.di.cls]-rank[b.di.cls]) || (b.di.over-a.di.over) || (a.di.day-b.di.day));
+  box.innerHTML=rows.map(({t,di})=>{
+    const c=computeT(t); const dues=Math.max(0,c.balance)+c.elec;
+    return `<div class="duetile ${di.cls}" onclick="openFlat('${t.id}')">
+      <div class="dt-day"><b>${di.day}</b><span>${ord(di.day).replace(String(di.day),"")}</span></div>
+      <div class="dt-mid"><div class="dt-name">${esc(t.room)}${t.name?" · "+esc(t.name.split(' ')[0]):""}</div>
+        <div class="dt-status">${di.label}${dues>0?" · baaki "+money(dues):""}</div></div>
+      ${dues>0?`<button class="btn sm ok" onclick="event.stopPropagation();waShare('${t.id}')">Remind</button>`:'<span class="dt-ok">✓</span>'}
+    </div>`;
+  }).join("");
 }
 function setGauge(pct){
   const g=document.getElementById("collGauge"); const C=2*Math.PI*52;
@@ -409,7 +448,7 @@ function renderProfiles(){
   const ts = selHouse ? DB.tenants.filter(t=>t.houseId===selHouse) : DB.tenants;
   document.getElementById("roomsEmpty").hidden=ts.length>0;
   box.innerHTML = ts.slice().sort((a,b)=>String(a.room).localeCompare(String(b.room),undefined,{numeric:true})).map(t=>{
-    const c=computeT(t); const vac=t.status==="vacant"; const dues=Math.max(0,c.balance)+c.elec;
+    const c=computeT(t); const vac=t.status==="vacant"; const dues=Math.max(0,c.balance)+c.elec; const di=rentDueInfo(t);
     const statusTag = vac?'<span class="tag vacant">Vacant</span>':(dues>0?'<span class="tag due">Baaki '+money(dues)+'</span>':'<span class="tag ok">Clear</span>');
     return `<div class="pcard glass ${vac?'is-vacant':''}" onclick="openFlat('${t.id}')">
       <div class="pc-top">
@@ -433,6 +472,7 @@ function renderProfiles(){
         <div class="pd"><span>Bijli+Motor</span><b style="color:${c.elec>0?'var(--cyan)':'var(--emerald)'}">${money(c.elec)}</b></div>
         <div class="pd tot"><span>Total baaki</span><b style="color:${dues>0?'var(--rose)':'var(--emerald)'}">${money(dues)}</b></div>
       </div>
+      ${vac?"":`<div class="duechip ${di.cls}"><span class="dc-dot"></span>Rent due: ${di.label}</div>`}
       <div class="pc-open">Open dossier <span class="chev">›</span></div>
     </div>`;
   }).join("");
@@ -443,7 +483,7 @@ function openFlat(tid){ openFlatId=tid; editPayId=null; renderFlat(tid); documen
 function closeFlat(){ openFlatId=null; editPayId=null; document.getElementById("flatDrawer").classList.remove("show"); document.body.style.overflow=""; }
 function renderFlat(tid){
   const t=DB.tenants.find(x=>x.id===tid); if(!t){ closeFlat(); return; }
-  const c=computeT(t); const vac=t.status==="vacant"; const cm=curMonth();
+  const c=computeT(t); const vac=t.status==="vacant"; const cm=curMonth(); const di=rentDueInfo(t);
   const dues=Math.max(0,c.balance)+c.elec;
   const gotThis=DB.payments.filter(p=>p.tenantId===tid&&p.forMonth===cm).reduce((s,p)=>s+(+p.amount||0),0);
   const statusTag = vac?'<span class="tag vacant">Vacant</span>':(dues>0?'<span class="tag due">Baaki '+money(dues)+'</span>':'<span class="tag ok">Clear ✓</span>');
@@ -505,7 +545,7 @@ function renderFlat(tid){
           <div class="mini-add"><input id="d_sec" type="number" min="0" placeholder="mila (₹)"><button class="btn sm gold" onclick="receiveMoney('${tid}','sec')">+ Add</button></div></div>
       </div>
 
-      <div class="dr-sec">Rent — collect &amp; history <span class="soft">· ${money(c.paid)} received · ${money(Math.max(0,c.balance))} baaki</span></div>
+      <div class="dr-sec">Rent — collect &amp; history <span class="soft">· ${money(c.paid)} received · ${money(Math.max(0,c.balance))} baaki</span>${vac?"":`<span class="duechip ${di.cls}" style="margin-left:auto"><span class="dc-dot"></span>${di.label}</span>`}</div>
       <div class="mini-form">
         <input id="d_p_amount" type="number" min="0" placeholder="Amount ₹" value="${+t.rent||''}">
         <input id="d_p_month" type="month" value="${cm}">
@@ -527,7 +567,7 @@ function renderFlat(tid){
       <div class="calc" id="d_e_calc"></div>
       <div class="tblwrap"><table><thead><tr><th>Month</th><th class="r">Reading</th><th class="r">Units</th><th class="r">Amount</th><th>Status</th><th></th></tr></thead><tbody>${billRows}</tbody></table></div>
 
-      <div class="dr-sec">Motor / paani share <span class="soft">· baaki ${money(c.motor)}</span></div>
+      <div class="dr-sec">Motor / paani share <span class="soft">· due ${ord(motorDueDay(t.houseId))} tareekh · baaki ${money(c.motor)}</span></div>
       <div class="tblwrap"><table><thead><tr><th>Month</th><th class="r">Share</th><th class="r">Amount</th><th>Status</th><th></th></tr></thead><tbody>${motorRows}</tbody></table></div>
 
       <div class="dr-actions">
