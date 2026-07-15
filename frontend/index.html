@@ -3,18 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KHATA — Estate Ledger · Rent & Electricity</title>
-<meta name="theme-color" content="#07080a">
+<title>KHATA — Estate Ledger</title>
+<meta name="theme-color" content="#0a0908">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23101319'/><text x='50' y='72' font-family='Sora,sans-serif' font-size='62' font-weight='700' text-anchor='middle' fill='%23dfe6ef'>K</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230d0b09'/><text x='50' y='73' font-family='Georgia,serif' font-size='62' font-weight='700' text-anchor='middle' fill='%23e2c489'>K</text></svg>">
 </head>
 <body>
-  <div class="bg">
+  <div class="bg" aria-hidden="true">
     <span class="blob b1"></span><span class="blob b2"></span>
     <span class="blob b3"></span><span class="blob b4"></span><span class="blob b5"></span>
+    <span class="grain"></span>
   </div>
   <canvas id="confetti" class="confetti"></canvas>
 
@@ -23,158 +24,155 @@
       <div class="brand">
         <span class="logo">K</span>
         <div>
-          <div class="title">KHATA<span class="spark"></span></div>
-          <div class="tagline">Estate Ledger · Rent · Electricity · Deposits</div>
+          <div class="title">KHATA<span class="crest"></span></div>
+          <div class="tagline">Estate Ledger · since your first tenant</div>
         </div>
       </div>
       <nav class="tabs" id="tabs">
-        <button data-tab="dash" class="active">Dashboard</button>
-        <button data-tab="houses">Properties</button>
-        <button data-tab="rooms">Units</button>
-        <button data-tab="pay">Rent</button>
-        <button data-tab="elec">Electricity</button>
+        <button data-tab="dash" class="active">Overview</button>
+        <button data-tab="flats">Flats</button>
+        <button data-tab="props">Properties</button>
         <button data-tab="data">Data</button>
       </nav>
-      <div class="status" id="conn" title="Backend connection">•</div>
+      <div class="status" id="conn" title="Server connection">•</div>
     </header>
 
-    <!-- DASHBOARD -->
+    <!-- ===================== OVERVIEW ===================== -->
     <section id="tab-dash" class="page">
-      <div class="chips" id="houseChips"></div>
+      <div class="hero glass">
+        <div class="hero-l">
+          <div class="hero-eyebrow" id="heroHouse">Portfolio</div>
+          <div class="hero-metric"><span class="hero-cur">₹</span><span class="val" id="heroDue" data-to="0" data-fmt="plain">0</span></div>
+          <div class="hero-sub" id="heroSub">total baaki · rent + bijli + motor</div>
+          <div class="chips" id="houseChips"></div>
+        </div>
+        <div class="hero-r">
+          <div class="gauge" id="collGauge" style="--v:0">
+            <svg viewBox="0 0 120 120"><circle class="g-track" cx="60" cy="60" r="52"></circle><circle class="g-fill" cx="60" cy="60" r="52"></circle></svg>
+            <div class="gauge-c"><b id="collPct">0%</b><span>collected<br>this month</span></div>
+          </div>
+        </div>
+      </div>
+
       <div class="stats" id="dashStats"></div>
+
       <div class="two-col">
         <div class="card glass chartcard">
-          <div class="card-head"><h2>📈 Rent collection <span class="soft">(last 6 months)</span></h2></div>
+          <div class="card-head"><h2>Rent collection</h2><p>last 6 months</p></div>
           <div class="chart" id="chart"></div>
         </div>
         <div class="card glass">
-          <div class="card-head"><h2>🏘️ Ghar-wise</h2></div>
+          <div class="card-head"><h2>Ghar-wise</h2><p>occupancy &amp; dues</p></div>
           <div class="housemini" id="houseMini"></div>
         </div>
       </div>
+
       <div class="card glass">
-        <div class="card-head"><h2>💔 Baaki / Overdue</h2><p>jinka rent ya bijli ka paisa bacha hai</p></div>
+        <div class="card-head"><h2>Baaki / Overdue</h2><p>jinka rent ya bijli baaki hai — tap to open dossier</p></div>
         <div class="tblwrap"><table id="overdueTbl">
-          <thead><tr><th>Ghar</th><th>Room</th><th>Tenant</th><th class="r">Rent baaki</th><th class="r">Bijli baaki</th><th class="r">Total</th><th></th></tr></thead>
+          <thead><tr><th>Ghar</th><th>Flat</th><th>Tenant</th><th class="r">Rent baaki</th><th class="r">Bijli+Motor</th><th class="r">Total</th><th></th></tr></thead>
           <tbody></tbody></table></div>
-        <div class="empty" id="overdueEmpty" hidden>Sab clear hai! Koi baaki nahi 🎉</div>
-      </div>
-      <div class="card glass">
-        <div class="card-head"><h2>🗓️ Is mahine ka hisaab <span class="soft" id="curMonthLbl"></span></h2></div>
-        <div class="stats mini" id="monthStats"></div>
+        <div class="empty" id="overdueEmpty" hidden>Sab clear hai — koi baaki nahi ✦</div>
       </div>
     </section>
 
-    <!-- HOUSES -->
-    <section id="tab-houses" class="page" hidden>
+    <!-- ===================== FLATS ===================== -->
+    <section id="tab-flats" class="page" hidden>
       <div class="card glass">
-        <div class="card-head"><h2 id="hFormTitle">🏡 Naya Ghar add karein</h2><p>2 ghar hon ya 4 — har ghar alag, uske apne tenants</p></div>
-        <input type="hidden" id="h_id">
-        <div class="grid">
-          <label class="f">Ghar ka naam<input id="h_name" placeholder="e.g. Sharma Villa / Ghar 1"></label>
-          <label class="f">Address / area<input id="h_addr" placeholder="e.g. Model Town, Gali 4"></label>
-          <label class="f">Note<input id="h_note" placeholder="optional"></label>
-        </div>
-        <div class="actions"><button class="btn" onclick="saveHouse()">💾 Save ghar</button><button class="btn ghost" onclick="resetHouseForm()">Clear</button></div>
-      </div>
-      <div class="housegrid" id="houseGrid"></div>
-      <div class="empty" id="houseEmpty">Abhi koi ghar nahi. Upar form se add karein 👆</div>
-    </section>
-
-    <!-- ROOMS -->
-    <section id="tab-rooms" class="page" hidden>
-      <div class="card glass">
-        <div class="card-head"><h2 id="tFormTitle">🚪 Naya Room / Tenant</h2><p>ghar chuno, phir tenant ki detail</p></div>
+        <div class="card-head"><h2 id="tFormTitle">Naya Flat / Tenant</h2><p>ghar chuno · fixed rent · advance &amp; security alag · KYC</p></div>
         <input type="hidden" id="t_id">
+        <div class="form-sec">Flat &amp; tenant</div>
         <div class="grid">
-          <label class="f">Ghar<select id="t_house"></select></label>
-          <label class="f">Room no. / Name<input id="t_room" placeholder="Room 1 / First floor"></label>
+          <label class="f">Ghar / Property<select id="t_house"></select></label>
+          <label class="f">Flat no. / Name<input id="t_room" placeholder="1A"></label>
           <label class="f">Tenant ka naam<input id="t_name" placeholder="Rohit Sharma"></label>
+          <label class="f">Father / Guardian<input id="t_father" placeholder="optional"></label>
           <label class="f">Phone<input id="t_phone" placeholder="98765 43210"></label>
-          <label class="f">Monthly rent (₹)<input id="t_rent" type="number" min="0" placeholder="5000"></label>
-          <label class="f">Deposit / Advance (₹)<input id="t_dep" type="number" min="0" placeholder="10000"></label>
+          <label class="f">Fixed monthly rent (₹)<input id="t_rent" type="number" min="0" placeholder="8500"></label>
           <label class="f">Move-in month<input id="t_movein" type="month"></label>
           <label class="f">Status<select id="t_status"><option value="occupied">Occupied</option><option value="vacant">Vacant (khaali)</option></select></label>
-          <label class="f">Note<input id="t_note" placeholder="optional"></label>
         </div>
-        <div class="actions"><button class="btn" onclick="saveTenant()">💾 Save</button><button class="btn ghost" onclick="resetTenantForm()">Clear</button></div>
-      </div>
-      <div id="roomsByHouse"></div>
-      <div class="empty" id="roomsEmpty">Abhi koi room nahi. Upar form se add karein 👆</div>
-    </section>
-
-    <!-- RENT -->
-    <section id="tab-pay" class="page" hidden>
-      <div class="card glass">
-        <div class="card-head"><h2 id="pFormTitle">💸 Rent payment</h2><p>jab tenant rent de, yahan likh dein</p></div>
-        <input type="hidden" id="p_id">
+        <div class="form-sec">KYC — Aadhaar &amp; address</div>
         <div class="grid">
-          <label class="f">Tenant<select id="p_tenant"></select></label>
-          <label class="f">Amount (₹)<input id="p_amount" type="number" min="0" placeholder="5000"></label>
-          <label class="f">Payment date<input id="p_date" type="date"></label>
-          <label class="f">Kis mahine ka<input id="p_formonth" type="month"></label>
-          <label class="f">Mode<select id="p_mode"><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Cheque</option><option>Other</option></select></label>
-          <label class="f">Note<input id="p_note" placeholder="e.g. part payment"></label>
+          <label class="f">Aadhaar number<input id="t_aadhaar" placeholder="XXXX XXXX XXXX" inputmode="numeric"></label>
+          <label class="f wide">Permanent address (native)<input id="t_perm" placeholder="Village / City, State"></label>
         </div>
-        <div class="actions"><button class="btn" onclick="savePayment()">💾 Save</button><button class="btn ghost" onclick="resetPaymentForm()">Clear</button></div>
-      </div>
-      <div class="card glass">
-        <div class="card-head"><h2>🧾 Payment history</h2></div>
-        <div class="barrow"><span class="inline-f">Tenant: <select id="p_filter" onchange="renderPayments()"></select></span><span class="spacer"></span><span class="pill-total" id="payTotal"></span></div>
-        <div class="tblwrap"><table id="payTbl">
-          <thead><tr><th>Date</th><th>Tenant</th><th>For month</th><th class="r">Amount</th><th>Mode</th><th>Note</th><th></th></tr></thead>
-          <tbody></tbody></table></div>
-        <div class="empty" id="payEmpty">Abhi koi rent payment nahi.</div>
-      </div>
-    </section>
-
-    <!-- BIJLI -->
-    <section id="tab-elec" class="page" hidden>
-      <div class="card glass elec-card">
-        <div class="card-head"><h2 id="eFormTitle">⚡ Bijli bill</h2><p>pichli + iss mahine ki reading daalo — units &amp; amount khud ban jayega</p></div>
-        <input type="hidden" id="e_id">
+        <div class="form-sec">Advance &amp; Security — alag-alag</div>
         <div class="grid">
-          <label class="f">Tenant<select id="e_tenant" onchange="prefillPrev()"></select></label>
-          <label class="f">Mahina<input id="e_month" type="month"></label>
-          <label class="f">Pichle month reading<input id="e_prev" type="number" min="0" placeholder="1200" oninput="calcElec()"></label>
-          <label class="f">Iss month reading<input id="e_curr" type="number" min="0" placeholder="1320" oninput="calcElec()"></label>
-          <label class="f">Rate / unit (₹)<input id="e_rate" type="number" min="0" step="0.01" placeholder="8" oninput="calcElec()"></label>
-          <label class="f">Amount (₹)<input id="e_amount" type="number" min="0" placeholder="auto"></label>
-          <label class="f">Note<input id="e_note" placeholder="optional"></label>
-          <label class="f">Status<select id="e_paid"><option value="0">Unpaid (baaki)</option><option value="1">Paid (mil gaya)</option></select></label>
+          <label class="f">Advance — tay hua (₹)<input id="t_advA" type="number" min="0" placeholder="8500" oninput="calcTenantMoney()"></label>
+          <label class="f">Advance — mila (₹)<input id="t_advP" type="number" min="0" placeholder="8500" oninput="calcTenantMoney()"></label>
+          <label class="f">Security — tay hua (₹)<input id="t_secA" type="number" min="0" placeholder="10000" oninput="calcTenantMoney()"></label>
+          <label class="f">Security — mila (₹)<input id="t_secP" type="number" min="0" placeholder="5000" oninput="calcTenantMoney()"></label>
+          <label class="f wide">Note<input id="t_note" placeholder="optional"></label>
         </div>
-        <div class="calc" id="e_calc"></div>
-        <div class="actions"><button class="btn elec" onclick="saveEbill()">💾 Save bill</button><button class="btn ghost" onclick="resetEbillForm()">Clear</button></div>
+        <div class="calc" id="t_calc"></div>
+        <div class="actions"><button class="btn gold" onclick="saveTenant()">Save flat</button><button class="btn ghost" onclick="resetTenantForm()">Clear</button></div>
       </div>
-      <div class="card glass">
-        <div class="card-head"><h2>🔌 Bijli bills</h2></div>
-        <div class="barrow"><span class="inline-f">Tenant: <select id="e_filter" onchange="renderEbills()"></select></span><span class="spacer"></span><span class="pill-total" id="elecTotals"></span></div>
-        <div class="tblwrap"><table id="elecTbl">
-          <thead><tr><th>Month</th><th>Tenant</th><th class="r">Prev</th><th class="r">Curr</th><th class="r">Units</th><th class="r">Rate</th><th class="r">Amount</th><th>Status</th><th></th></tr></thead>
-          <tbody></tbody></table></div>
-        <div class="empty" id="elecEmpty">Abhi koi bijli bill nahi.</div>
-      </div>
+
+      <div class="section-title"><span>Flat dossiers</span><span class="st-line"></span></div>
+      <div class="profilegrid" id="profileCards"></div>
+      <div class="empty" id="roomsEmpty">Abhi koi flat nahi. Upar form se add karein.</div>
     </section>
 
-    <!-- BACKUP -->
+    <!-- ===================== PROPERTIES ===================== -->
+    <section id="tab-props" class="page" hidden>
+      <div class="card glass">
+        <div class="card-head"><h2 id="hFormTitle">Naya Ghar / Property</h2><p>2 ghar hon ya 4 — har ghar ke apne flats</p></div>
+        <input type="hidden" id="h_id">
+        <div class="grid">
+          <label class="f">Ghar ka naam<input id="h_name" placeholder="Musa Mention"></label>
+          <label class="f">Address / area<input id="h_addr" placeholder="Lala Lajpat Rai"></label>
+          <label class="f">Note<input id="h_note" placeholder="optional"></label>
+        </div>
+        <div class="actions"><button class="btn gold" onclick="saveHouse()">Save ghar</button><button class="btn ghost" onclick="resetHouseForm()">Clear</button></div>
+      </div>
+      <div class="housegrid" id="houseGrid"></div>
+      <div class="empty" id="houseEmpty">Abhi koi ghar nahi. Upar form se add karein.</div>
+
+      <div class="section-title"><span>⚙ Motor / common water meter</span><span class="st-line"></span></div>
+      <div class="card glass motor-card">
+        <div class="card-head"><h2 id="mFormTitle">Motor reading</h2><p>ek common meter — total units sab flats me barabar bat jayega, har flat ke bijli me add ho jayega</p></div>
+        <input type="hidden" id="m_id">
+        <div class="grid">
+          <label class="f">Ghar / Property<select id="m_house" onchange="prefillMotor()"></select></label>
+          <label class="f">Mahina<input id="m_month" type="month" onchange="prefillMotor()"></label>
+          <label class="f">Pichle month reading<input id="m_prev" type="number" min="0" placeholder="1000" oninput="calcMotor()"></label>
+          <label class="f">Iss month reading<input id="m_curr" type="number" min="0" placeholder="1050" oninput="calcMotor()"></label>
+          <label class="f">Rate / unit (₹)<input id="m_rate" type="number" min="0" step="0.01" placeholder="10" oninput="calcMotor()"></label>
+          <label class="f">Kitne flat me baate<input id="m_split" type="number" min="1" placeholder="5" oninput="calcMotor()"></label>
+          <label class="f wide">Note<input id="m_note" placeholder="optional"></label>
+        </div>
+        <div class="motor-preview" id="m_preview"></div>
+        <div class="actions"><button class="btn cyan" onclick="saveMotor()">Save motor reading</button><button class="btn ghost" onclick="resetMotorForm()">Clear</button></div>
+      </div>
+      <div id="motorList"></div>
+      <div class="empty" id="motorEmpty">Abhi koi motor reading nahi.</div>
+    </section>
+
+    <!-- ===================== DATA ===================== -->
     <section id="tab-data" class="page" hidden>
       <div class="card glass">
-        <div class="card-head"><h2>☁️ Backup</h2><p>data server par safe hai — phir bhi ek copy rakhna achha hai</p></div>
+        <div class="card-head"><h2>Backup</h2><p>data server par safe hai — phir bhi ek copy rakhna achha hai</p></div>
         <div class="actions">
-          <button class="btn" onclick="exportJSON()">⬇️ Full backup (.json)</button>
-          <button class="btn ghost" onclick="exportCSV()">⬇️ Rent CSV</button>
-          <button class="btn ghost" onclick="exportElecCSV()">⬇️ Bijli CSV</button>
+          <button class="btn gold" onclick="exportJSON()">Full backup (.json)</button>
+          <button class="btn ghost" onclick="exportCSV()">Rent CSV</button>
+          <button class="btn ghost" onclick="exportElecCSV()">Bijli CSV</button>
         </div>
       </div>
       <div class="card glass">
-        <div class="card-head"><h2>♻️ Restore backup</h2><p>.json file choose karo (maujooda data replace ho jayega)</p></div>
+        <div class="card-head"><h2>Restore backup</h2><p>.json file choose karo (maujooda data replace ho jayega)</p></div>
         <div class="actions"><input type="file" id="importFile" accept="application/json" onchange="importJSON(event)"></div>
       </div>
       <div class="card glass danger-card">
-        <div class="card-head"><h2>🗑️ Sab delete</h2><p>saara data hamesha ke liye mit jayega</p></div>
+        <div class="card-head"><h2>Sab delete</h2><p>saara data hamesha ke liye mit jayega</p></div>
         <div class="actions"><button class="btn danger" onclick="wipeAll()">Delete everything</button></div>
       </div>
     </section>
+  </div>
+
+  <!-- flat dossier drawer -->
+  <div class="drawer" id="flatDrawer">
+    <div class="drawer-panel glass" id="flatDrawerBody"></div>
   </div>
 
   <!-- ledger modal -->
@@ -196,7 +194,7 @@
         <button class="close" onclick="closeInv()" aria-label="Close">×</button>
         <span class="inline-f">Tenant <select id="inv_tenant" onchange="renderInvoice()"></select></span>
         <span class="inline-f">Month <input type="month" id="inv_month" onchange="renderInvoice()"></span>
-        <button class="btn" onclick="printInvoice()">🖨️ Print / Save PDF</button>
+        <button class="btn gold" onclick="printInvoice()">Print / Save PDF</button>
       </div>
       <div id="invoiceArea"></div>
     </div>

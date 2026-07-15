@@ -9,7 +9,7 @@ const DATA_DIR = path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 const TMP_FILE = path.join(DATA_DIR, "db.tmp.json");
 
-const EMPTY = { houses: [], tenants: [], payments: [], ebills: [] };
+const EMPTY = { houses: [], tenants: [], payments: [], ebills: [], motorbills: [] };
 
 function ensure() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -28,10 +28,11 @@ function read() {
       tenants: Array.isArray(data.tenants) ? data.tenants : [],
       payments: Array.isArray(data.payments) ? data.payments : [],
       ebills: Array.isArray(data.ebills) ? data.ebills : [],
+      motorbills: Array.isArray(data.motorbills) ? data.motorbills : [],
     };
   } catch (e) {
     console.error("DB read failed, starting empty:", e.message);
-    cache = { houses: [], tenants: [], payments: [], ebills: [] };
+    cache = { houses: [], tenants: [], payments: [], ebills: [], motorbills: [] };
   }
   return cache;
 }
@@ -43,6 +44,7 @@ function write(state) {
     tenants: state.tenants || [],
     payments: state.payments || [],
     ebills: state.ebills || [],
+    motorbills: state.motorbills || [],
   };
   fs.writeFileSync(TMP_FILE, JSON.stringify(cache, null, 2));
   fs.renameSync(TMP_FILE, DB_FILE); // atomic swap

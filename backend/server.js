@@ -41,7 +41,7 @@ if (AUTH_USER && AUTH_PASS) {
 const FRONTEND = path.join(__dirname, "..", "frontend");
 app.use(express.static(FRONTEND));
 
-const collections = ["houses", "tenants", "payments", "ebills"];
+const collections = ["houses", "tenants", "payments", "ebills", "motorbills"];
 
 function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
 function str(v, n) { return String(v == null ? "" : v).slice(0, n); }
@@ -50,16 +50,47 @@ function cleanHouse(b) {
   return { name: str(b.name, 120), address: str(b.address, 220), note: str(b.note, 300) };
 }
 function cleanTenant(b) {
+  // advance & security are tracked separately: agreed (kitna tay hua) vs paid (kitna mila)
+  const securityAgreed = num(b.securityAgreed != null ? b.securityAgreed : b.deposit);
   return {
     houseId: str(b.houseId, 60),
     room: str(b.room, 120),
     name: str(b.name, 120),
     phone: str(b.phone, 40),
+    fatherName: str(b.fatherName, 120),
+    aadhaar: str(b.aadhaar, 20),
+    permAddress: str(b.permAddress, 300),
     rent: num(b.rent),
-    deposit: num(b.deposit),
+    advanceAgreed: num(b.advanceAgreed),
+    advancePaid: num(b.advancePaid),
+    securityAgreed,
+    securityPaid: num(b.securityPaid),
+    deposit: num(b.deposit), // legacy — kept for old backups
     moveIn: str(b.moveIn, 7),
     status: b.status === "vacant" ? "vacant" : "occupied",
     note: str(b.note, 300),
+  };
+}
+function cleanMotor(b) {
+  // Common water-motor meter for a whole property. Consumption splits equally across flats.
+  const prev = num(b.prev), curr = num(b.curr), rate = num(b.rate);
+  const units = Math.max(0, curr - prev);
+  const splitCount = Math.max(1, Math.round(num(b.splitCount)) || 1);
+  const shareUnits = Math.round((units / splitCount) * 100) / 100;
+  const shareAmount = Math.round(shareUnits * rate);
+  const paid = {}, paidDate = {};
+  if (b.paid && typeof b.paid === "object") {
+    for (const k of Object.keys(b.paid)) {
+      paid[str(k, 60)] = !!b.paid[k];
+      if (b.paidDate && b.paidDate[k]) paidDate[str(k, 60)] = str(b.paidDate[k], 10);
+    }
+  }
+  return {
+    houseId: str(b.houseId, 60),
+    month: str(b.month, 7),
+    prev, curr, units, rate, splitCount, shareUnits, shareAmount,
+    note: str(b.note, 300),
+    paid, paidDate,
   };
 }
 function cleanPayment(b) {
@@ -86,7 +117,7 @@ function cleanEbill(b) {
     note: str(b.note, 300),
   };
 }
-const cleaners = { houses: cleanHouse, tenants: cleanTenant, payments: cleanPayment, ebills: cleanEbill };
+const cleaners = { houses: cleanHouse, tenants: cleanTenant, payments: cleanPayment, ebills: cleanEbill, motorbills: cleanMotor };
 
 app.get("/api/state", (req, res) => res.json(db.read()));
 
@@ -120,10 +151,13 @@ function mount(name) {
       state.tenants = state.tenants.filter((t) => t.houseId !== id);
       state.payments = state.payments.filter((p) => !tids.includes(p.tenantId));
       state.ebills = state.ebills.filter((e) => !tids.includes(e.tenantId));
+      state.motorbills = state.motorbills.filter((m) => m.houseId !== id);
     }
     if (name === "tenants") {
       state.payments = state.payments.filter((p) => p.tenantId !== id);
       state.ebills = state.ebills.filter((e) => e.tenantId !== id);
+      // drop this tenant from any motor split paid-maps
+      state.motorbills.forEach((m) => { if (m.paid) delete m.paid[id]; if (m.paidDate) delete m.paidDate[id]; });
     }
     db.write(state);
     res.json({ removed: before - state[name].length });
@@ -141,12 +175,13 @@ app.post("/api/import", (req, res) => {
     tenants: withId(b.tenants, cleanTenant),
     payments: withId(b.payments, cleanPayment),
     ebills: withId(b.ebills, cleanEbill),
+    motorbills: withId(b.motorbills, cleanMotor),
   });
   res.json(db.read());
 });
 
 app.post("/api/wipe", (req, res) => {
-  db.write({ houses: [], tenants: [], payments: [], ebills: [] });
+  db.write({ houses: [], tenants: [], payments: [], ebills: [], motorbills: [] });
   res.json({ ok: true });
 });
 
