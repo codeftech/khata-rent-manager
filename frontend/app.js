@@ -417,7 +417,7 @@ function launchConfetti(){
   if(matchMedia("(prefers-reduced-motion:reduce)").matches) return;
   const cv=document.getElementById("confetti"); const ctx=cv.getContext("2d");
   cv.width=innerWidth; cv.height=innerHeight;
-  const cols=["#ff8fc0","#b98cff","#5ee6dc","#ffd39e","#8b6ee8","#37c17e"];
+  const cols=["#f4f7fb","#cfd6df","#57d6d2","#8fc7ff","#e6c98a","#54e3a1"];
   const P=Array.from({length:120},()=>({x:innerWidth/2+(Math.random()-.5)*160,y:innerHeight/3,
     vx:(Math.random()-.5)*11,vy:Math.random()*-13-4,g:.4+Math.random()*.2,
     s:6+Math.random()*7,c:cols[(Math.random()*cols.length)|0],r:Math.random()*6,vr:(Math.random()-.5)*.4,life:0}));
