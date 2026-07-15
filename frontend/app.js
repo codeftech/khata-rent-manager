@@ -298,10 +298,11 @@ function renderDash(){
   ts.forEach(t=>{ if(t.status==="vacant")vac++; else{occ++;totMonthly+=+t.rent||0;} secHeld+=+t.securityPaid||0;
     const c=computeT(t); totDue+=c.due; totPaid+=c.paid; advDueSum+=c.advBal; secDueSum+=c.secBal; });
   const ids=new Set(ts.map(t=>t.id));
-  let elecPend=0,elecColl=0;
-  DB.ebills.forEach(b=>{ if(!ids.has(b.tenantId)) return; if(b.paid) elecColl+=+b.amount||0; else elecPend+=+b.amount||0; });
+  let elecColl=0,meterPend=0,motorPend=0;
+  DB.ebills.forEach(b=>{ if(!ids.has(b.tenantId)) return; if(b.paid) elecColl+=+b.amount||0; else meterPend+=+b.amount||0; });
   DB.motorbills.forEach(m=>{ ts.forEach(t=>{ if(t.houseId!==m.houseId||t.status==="vacant")return;
-    const p=m.paid&&m.paid[t.id]; if(p) elecColl+=+m.shareAmount||0; else elecPend+=+m.shareAmount||0; }); });
+    const p=m.paid&&m.paid[t.id]; if(p) elecColl+=+m.shareAmount||0; else motorPend+=+m.shareAmount||0; }); });
+  const elecPend=meterPend+motorPend;
   const rentBal=Math.max(0,totDue-totPaid), grand=rentBal+elecPend;
 
   // hero
@@ -310,14 +311,14 @@ function renderDash(){
   document.getElementById("heroSub").textContent = grand>0 ? "total baaki · rent + bijli + motor" : "sab clear — koi baaki nahi ✦";
 
   document.getElementById("dashStats").innerHTML=
-    statN("Flats",ts.length,"int","",occ+" occupied · "+vac+" vacant") +
-    statN("Monthly rent",totMonthly,"money","gold","expected / month") +
-    statN("Rent collected",totPaid,"money","ok","ab tak total") +
-    statN("Rent baaki",rentBal,"money",rentBal>0?"due":"ok") +
-    statN("Bijli + Motor baaki",elecPend,"money",elecPend>0?"cyan":"ok",money(elecColl)+" mila") +
-    statN("Grand total baaki",grand,"money",grand>0?"due":"ok","rent + bijli + motor") +
-    statN("Security held",secHeld,"money","gold","jama hai") +
-    statN("Advance+Security baaki",advDueSum+secDueSum,"money",(advDueSum+secDueSum)>0?"warn":"ok",money(advDueSum)+" adv · "+money(secDueSum)+" sec");
+    statN("Flats",ts.length,"int","",occ+" occ · "+vac+" vacant","flats") +
+    statN("Monthly rent",totMonthly,"money","gold","expected / month","flats") +
+    statN("Rent collected",totPaid,"money","ok","ab tak total","flats") +
+    statN("Rent baaki",rentBal,"money",rentBal>0?"due":"ok","","flats") +
+    statN("Bijli + Motor baaki",elecPend,"money",elecPend>0?"cyan":"ok",money(elecColl)+" mila","props") +
+    statN("Grand total baaki",grand,"money",grand>0?"due":"ok","rent + bijli + motor","flats") +
+    statN("Security held",secHeld,"money","gold","jama hai","flats") +
+    statN("Advance+Security baaki",advDueSum+secDueSum,"money",(advDueSum+secDueSum)>0?"warn":"ok",money(advDueSum)+" adv · "+money(secDueSum)+" sec","flats");
   animateCounts(document.getElementById("dashStats"));
   animateCounts(document.querySelector(".hero"));
 
@@ -346,23 +347,33 @@ function renderDash(){
     statN("Flats paid",mPc,"int","ok",mPc+" paid · "+mUc+" pending");
     animateCounts(mv); }
 
-  // overdue
-  let rows="",any=false;
+  // overdue — compact list
+  let items="",any=false;
   ts.slice().sort((a,b)=>(computeT(b).balance+computeT(b).elec)-(computeT(a).balance+computeT(a).elec)).forEach(t=>{
     const c=computeT(t), tot=Math.max(0,c.balance)+c.elec; if(tot<=0) return; any=true;
-    rows+=`<tr onclick="openFlat('${t.id}')" style="cursor:pointer"><td>${esc(hName(t.houseId))}</td><td><b>${esc(t.room)}</b></td><td>${esc(t.name||"—")}</td>`+
-      `<td class="r money" style="color:${c.balance>0?"var(--rose)":"var(--ink-soft)"}">${money(Math.max(0,c.balance))}</td>`+
-      `<td class="r money" style="color:${c.elec>0?"var(--cyan)":"var(--ink-soft)"}">${money(c.elec)}</td>`+
-      `<td class="r money" style="color:var(--rose)">${money(tot)}</td>`+
-      `<td class="r"><button class="btn sm ok" onclick="event.stopPropagation();waShare('${t.id}')" title="WhatsApp reminder">Remind</button></td></tr>`;
+    items+=`<div class="odrow" onclick="openFlat('${t.id}')">`+
+      `<div class="od-l"><div class="od-name">${esc(t.room)}${t.name?" · "+esc(t.name.split(' ')[0]):""}</div><div class="od-sub">${esc(hName(t.houseId))} · ${money(Math.max(0,c.balance))} rent · ${money(c.elec)} bijli</div></div>`+
+      `<div class="od-amt">${money(tot)}</div>`+
+      `<button class="btn sm ok" onclick="event.stopPropagation();waShare('${t.id}')">Remind</button></div>`;
   });
-  document.querySelector("#overdueTbl tbody").innerHTML=rows;
-  document.getElementById("overdueTbl").hidden=!any;
+  document.getElementById("overdueList").innerHTML=items;
   document.getElementById("overdueEmpty").hidden=any;
 
   renderChart(ids);
   renderHouseMini();
   renderDueTracker(ts);
+  renderDuesDonut([{v:rentBal,c:"var(--rose)",l:"Rent"},{v:meterPend,c:"var(--cyan)",l:"Bijli"},{v:motorPend,c:"var(--ice)",l:"Motor"}]);
+}
+function renderDuesDonut(segs){
+  const el=document.getElementById("duesDonut"), leg=document.getElementById("duesLegend"); if(!el) return;
+  const total=segs.reduce((s,x)=>s+x.v,0);
+  if(total<=0){ el.style.background="conic-gradient(rgba(200,215,240,.1) 0 100%)"; el.innerHTML='<span class="donut-total">✦</span>';
+    if(leg) leg.innerHTML='<div class="lg-row"><span class="soft">Sab clear — koi baaki nahi</span></div>'; return; }
+  let acc=0; const stops=[];
+  segs.forEach(x=>{ if(x.v<=0) return; const a=acc/total*100, b=(acc+x.v)/total*100; stops.push(`${x.c} ${a}% ${b}%`); acc+=x.v; });
+  el.style.background="conic-gradient("+stops.join(",")+")";
+  el.innerHTML='<span class="donut-total">'+money(total)+'</span>';
+  if(leg) leg.innerHTML=segs.map(x=>`<div class="lg-row"><span class="lg-dot" style="background:${x.c}"></span>${x.l}<b>${money(x.v)}</b></div>`).join("");
 }
 function renderDueTracker(ts){
   const box=document.getElementById("dueTracker"); if(!box) return;
@@ -837,9 +848,10 @@ function launchConfetti(){
 /* ---------- utils ---------- */
 function val(id){ const el=document.getElementById(id); return el?el.value:""; }
 function set(id,v){ const el=document.getElementById(id); if(el) el.value=(v==null?"":v); }
-function statN(l,to,fmt,cls,sub){
+function statN(l,to,fmt,cls,sub,nav){
   const subHtml = sub ? `<div class="sub">${sub}</div>` : "";
-  return `<div class="stat"><div class="lbl">${l}</div><div class="val ${cls||""}" data-to="${to}" data-fmt="${fmt}">0</div>${subHtml}</div>`;
+  const clk = nav ? ` onclick="gotoTab('${nav}')"` : "";
+  return `<div class="stat${nav?" clickable":""}"${clk}><div class="lbl">${l}</div><div class="val ${cls||""}" data-to="${to}" data-fmt="${fmt}">0</div>${subHtml}</div>`;
 }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 let _t;

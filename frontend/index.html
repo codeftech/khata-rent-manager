@@ -48,13 +48,13 @@
 
     <!-- ===================== OVERVIEW ===================== -->
     <section id="tab-dash" class="page">
-      <div class="hero glass">
+      <div class="hero glass compact">
         <div class="hero-l">
           <div class="hero-eyebrow" id="heroHouse">Portfolio</div>
           <div class="hero-metric"><span class="hero-cur">₹</span><span class="val" id="heroDue" data-to="0" data-fmt="plain">0</span></div>
           <div class="hero-sub" id="heroSub">total baaki · rent + bijli + motor</div>
-          <div class="chips" id="houseChips"></div>
         </div>
+        <div class="chips" id="houseChips"></div>
         <div class="hero-r">
           <div class="gauge" id="collGauge" style="--v:0">
             <svg viewBox="0 0 120 120"><circle class="g-track" cx="60" cy="60" r="52"></circle><circle class="g-fill" cx="60" cy="60" r="52"></circle></svg>
@@ -65,35 +65,36 @@
 
       <div class="stats" id="dashStats"></div>
 
-      <div class="card glass">
-        <div class="card-head monthhead"><div><h2>Mahine ka hisaab</h2><p>kisi bhi mahine ka rent + bijli + motor</p></div>
-          <input type="month" id="dashMonth" onchange="renderDash()"></div>
-        <div class="stats mini" id="monthView"></div>
-      </div>
+      <div class="dashgrid">
+        <div class="card glass g-month">
+          <div class="card-head monthhead"><div><h2>Mahine ka hisaab</h2><p>kisi bhi mahine ka</p></div>
+            <input type="month" id="dashMonth" onchange="renderDash()"></div>
+          <div class="stats mini" id="monthView"></div>
+        </div>
 
-      <div class="two-col">
-        <div class="card glass chartcard">
+        <div class="card glass chartcard g-chart">
           <div class="card-head"><h2>Rent collection</h2><p>last 6 months</p></div>
           <div class="chart" id="chart"></div>
         </div>
-        <div class="card glass">
-          <div class="card-head"><h2>Ghar-wise</h2><p>occupancy &amp; dues</p></div>
+        <div class="card glass g-houses">
+          <div class="card-head"><h2>Ghar-wise</h2><p>occupancy</p></div>
           <div class="housemini" id="houseMini"></div>
         </div>
-      </div>
+        <div class="card glass g-overdue">
+          <div class="card-head"><h2>Baaki / Overdue</h2><p>tap → dossier</p></div>
+          <div class="overduelist" id="overdueList"></div>
+          <div class="empty" id="overdueEmpty" hidden>Sab clear ✦</div>
+        </div>
 
-      <div class="card glass">
-        <div class="card-head"><h2>Rent due tracker</h2><p>har flat ki apni date · overdue sabse upar</p></div>
-        <div class="duegrid" id="dueTracker"></div>
-        <div class="empty" id="dueEmpty" hidden>Koi occupied flat nahi.</div>
-      </div>
-
-      <div class="card glass">
-        <div class="card-head"><h2>Baaki / Overdue</h2><p>jinka rent ya bijli baaki hai — tap to open dossier</p></div>
-        <div class="tblwrap"><table id="overdueTbl">
-          <thead><tr><th>Ghar</th><th>Flat</th><th>Tenant</th><th class="r">Rent baaki</th><th class="r">Bijli+Motor</th><th class="r">Total</th><th></th></tr></thead>
-          <tbody></tbody></table></div>
-        <div class="empty" id="overdueEmpty" hidden>Sab clear hai — koi baaki nahi ✦</div>
+        <div class="card glass g-due">
+          <div class="card-head"><h2>Rent due tracker</h2><p>har flat ki date · overdue upar</p></div>
+          <div class="duegrid" id="dueTracker"></div>
+          <div class="empty" id="dueEmpty" hidden>Koi occupied flat nahi.</div>
+        </div>
+        <div class="card glass g-donut">
+          <div class="card-head"><h2>Baaki breakdown</h2><p>rent · bijli · motor</p></div>
+          <div class="donutwrap"><div class="donut" id="duesDonut"></div><div class="donut-legend" id="duesLegend"></div></div>
+        </div>
       </div>
     </section>
 

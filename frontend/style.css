@@ -161,6 +161,57 @@ body{margin:0;color:var(--ink);font-family:var(--f);line-height:1.5;overflow-x:h
 .two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;margin-bottom:20px}
 @media(max-width:900px){.two-col{grid-template-columns:1fr}}
 
+/* compact hero */
+.hero.compact{padding:20px 26px}
+.hero.compact .hero-metric{font-size:clamp(34px,5vw,54px);margin:5px 0 3px}
+.hero.compact .chips{margin:0;justify-content:center}
+.hero.compact .gauge{width:118px;height:118px}
+.hero.compact .gauge-c b{font-size:24px}
+
+/* clickable stat tiles */
+.stat.clickable{cursor:pointer}
+.stat.clickable:hover{border-color:var(--ice)}
+
+/* dense dashboard grid */
+.dashgrid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;margin-bottom:20px}
+.dashgrid>.card{margin-bottom:0;min-width:0}
+.g-month{grid-column:span 12}
+.g-chart{grid-column:span 5}
+.g-houses{grid-column:span 3}
+.g-overdue{grid-column:span 4}
+.g-due{grid-column:span 8}
+.g-donut{grid-column:span 4}
+@media(max-width:1100px){
+  .g-chart{grid-column:span 7}.g-houses{grid-column:span 5}.g-overdue{grid-column:span 12}
+  .g-due{grid-column:span 7}.g-donut{grid-column:span 5}
+}
+@media(max-width:760px){
+  .dashgrid{grid-template-columns:1fr}
+  .g-month,.g-chart,.g-houses,.g-overdue,.g-due,.g-donut{grid-column:span 1}
+}
+.g-chart .chart{height:130px}
+.g-due .duegrid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));max-height:260px;overflow-y:auto}
+
+/* overdue compact list */
+.overduelist{display:flex;flex-direction:column;gap:8px;max-height:270px;overflow-y:auto}
+.overduelist:empty{display:none}
+.odrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(200,215,240,.03);border:1px solid var(--line);border-left:3px solid var(--rose);cursor:pointer;transition:.2s cubic-bezier(.22,1,.36,1)}
+.odrow:hover{background:rgba(200,215,240,.06);transform:translateX(2px)}
+.od-l{flex:1;min-width:0}
+.od-name{font-weight:700;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.od-sub{font-size:10.5px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.od-amt{font-family:var(--f-d);font-weight:800;font-size:14px;color:var(--rose);font-variant-numeric:tabular-nums}
+
+/* dues donut */
+.donutwrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.donut{width:132px;height:132px;flex:none;border-radius:50%;position:relative;background:conic-gradient(rgba(200,215,240,.1) 0 100%)}
+.donut::after{content:"";position:absolute;inset:16px;border-radius:50%;background:var(--bg-1);z-index:1;box-shadow:inset 0 0 0 1px var(--line)}
+.donut-total{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-d);font-weight:800;font-size:15px;color:#fff;z-index:2;text-align:center;font-variant-numeric:tabular-nums;padding:0 10px}
+.donut-legend{display:flex;flex-direction:column;gap:9px;font-size:12.5px;font-weight:600;color:var(--ink-soft);flex:1;min-width:120px}
+.lg-row{display:flex;align-items:center;gap:9px}
+.lg-row b{color:var(--ink);margin-left:auto;font-variant-numeric:tabular-nums}
+.lg-dot{width:10px;height:10px;border-radius:3px;flex:none}
+
 /* ===== cards ===== */
 .card{padding:22px;margin-bottom:20px}
 .card-head{margin-bottom:16px}
