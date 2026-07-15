@@ -383,6 +383,69 @@ tbody tr:hover td{background:rgba(255,240,214,.03)}
   .dr-kpis{grid-template-columns:1fr}
 }
 
+/* ===== theme toggle ===== */
+.themebtn{width:38px;height:38px;flex:none;border-radius:11px;border:1px solid var(--line-bright);background:rgba(255,240,214,.05);
+  color:var(--gold-hi);font-size:17px;cursor:pointer;transition:.2s;display:grid;place-items:center}
+.themebtn:hover{border-color:var(--gold);background:rgba(255,240,214,.1);transform:translateY(-1px)}
+
+/* ===== photo pickers (flat form) ===== */
+.photo-row{display:flex;gap:20px;flex-wrap:wrap;margin-top:16px}
+.photo-pick{display:flex;flex-direction:column;gap:8px}
+.pp-lbl{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.pp-box{width:104px;height:104px;border-radius:14px;border:1.5px dashed var(--line-bright);background:rgba(255,240,214,.03) center/cover no-repeat;
+  display:grid;place-items:center;cursor:pointer;transition:.2s;overflow:hidden}
+.pp-box span{font-size:11px;font-weight:700;color:var(--ink-soft);letter-spacing:.03em}
+.pp-box:hover{border-color:var(--gold);box-shadow:0 0 16px var(--gold-glow)}
+.pp-box.has{border-style:solid;border-color:var(--gold)}
+.mini-x{background:none;border:none;color:var(--ink-dim);font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0}
+.mini-x:hover{color:var(--rose)}
+
+/* avatar photo */
+.pc-avatar.has-photo{background-size:cover;background-position:center;color:transparent;text-shadow:none}
+
+/* dossier KYC photos */
+.kyc-photos{display:flex;gap:12px;margin-top:14px}
+.kyc-thumb{width:96px;height:64px;border-radius:11px;background:center/cover no-repeat;border:1px solid var(--brd);cursor:pointer;position:relative;transition:.2s;box-shadow:var(--shadow-sm)}
+.kyc-thumb span{position:absolute;left:0;right:0;bottom:0;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-align:center;padding:3px;background:linear-gradient(0deg,rgba(0,0,0,.75),transparent);color:#fff}
+.kyc-thumb:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 0 16px var(--gold-glow)}
+
+/* image lightbox */
+.imglb{position:fixed;inset:0;z-index:140;display:none;place-items:center;padding:30px;background:rgba(3,2,1,.85);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);cursor:zoom-out}
+.imglb.show{display:grid}
+.imglb img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 30px 80px rgba(0,0,0,.7);border:1px solid var(--brd)}
+
+/* invoice deposits line */
+.inv-deposits{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:12px;border-top:1px dashed #e4dccb;font-size:11.5px;font-weight:600;color:#6b5f45}
+
+/* ===== LIGHT THEME ===== */
+:root[data-theme="light"]{
+  --bg-0:#f3ecdf; --bg-1:#efe7d7; --bg-2:#e7dcc7;
+  --ink:#241d12; --ink-soft:#6a5f4c; --ink-dim:#a1937c;
+  --panel:rgba(255,251,244,.74); --panel-strong:rgba(255,252,247,.9);
+  --brd:rgba(150,110,40,.22); --line:rgba(70,55,25,.10); --line-bright:rgba(70,55,25,.18);
+  --shadow:0 24px 60px rgba(120,90,30,.16), inset 0 1px 0 rgba(255,255,255,.7);
+  --shadow-sm:0 10px 26px rgba(120,90,30,.12), inset 0 1px 0 rgba(255,255,255,.6);
+  --gold:#a9761f; --gold-2:#8a5d16; --gold-hi:#79510f; --gold-glow:rgba(169,118,31,.24);
+  --cyan:#0f8f8c; --cyan-2:#0c6d72; --cyan-glow:rgba(15,143,140,.2);
+  --emerald:#128a52; --emerald-2:#0d6b3f; --rose:#d43a58; --rose-2:#a82742; --amber:#a06a12;
+  --grad-gold:linear-gradient(135deg,#f4dca3,#cb9c40 55%,#e8cc8b);
+  --grad-cyan:linear-gradient(135deg,#5cc9c6,#178a88);
+  --grad-ok:linear-gradient(135deg,#54cf93,#128a52);
+  --grad-rose:linear-gradient(135deg,#ef7e92,#d43a58);
+}
+:root[data-theme="light"] body{
+  background:
+    radial-gradient(1200px 820px at 14% -8%, rgba(201,154,63,.18) 0%, transparent 52%),
+    radial-gradient(1200px 820px at 100% 4%, rgba(26,143,140,.12) 0%, transparent 52%),
+    linear-gradient(168deg,#faf4e8 0%,#f1e8d6 55%,#f6efe0 100%);
+  background-attachment:fixed}
+:root[data-theme="light"] .grain{opacity:.22}
+:root[data-theme="light"] .blob{opacity:.2}
+:root[data-theme="light"] .hcard .hhead{background:linear-gradient(135deg,#fbf5e9,#f2e8d3)}
+:root[data-theme="light"] .dr-head{background:linear-gradient(180deg,#fbf5e9,rgba(251,245,233,.92))}
+:root[data-theme="light"] .hm-ring i,:root[data-theme="light"] .pc-flat{background:#f6efe0}
+:root[data-theme="light"] select option,:root[data-theme="light"] optgroup{background:#f6efe0;color:#241d12}
+
 /* print — only invoice */
 @media print{
   body *{visibility:hidden!important}

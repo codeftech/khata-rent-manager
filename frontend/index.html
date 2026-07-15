@@ -34,6 +34,7 @@
         <button data-tab="props">Properties</button>
         <button data-tab="data">Data</button>
       </nav>
+      <button class="themebtn" id="themeBtn" onclick="toggleTheme()" title="Light / dark" aria-label="Toggle theme">☾</button>
       <div class="status" id="conn" title="Server connection">•</div>
     </header>
 
@@ -97,6 +98,19 @@
           <label class="f">Aadhaar number<input id="t_aadhaar" placeholder="XXXX XXXX XXXX" inputmode="numeric"></label>
           <label class="f wide">Permanent address (native)<input id="t_perm" placeholder="Village / City, State"></label>
         </div>
+        <input type="hidden" id="t_photo"><input type="hidden" id="t_aadhaarPhoto">
+        <div class="photo-row">
+          <div class="photo-pick"><span class="pp-lbl">Tenant / flat photo</span>
+            <div class="pp-box" id="t_photoPrev" onclick="document.getElementById('t_photoFile').click()"><span>+ Photo</span></div>
+            <input type="file" id="t_photoFile" accept="image/*" hidden onchange="pickPhoto(event,'t_photo','t_photoPrev')">
+            <button type="button" class="mini-x" onclick="clearPhoto('t_photo','t_photoPrev')" title="Remove">clear</button>
+          </div>
+          <div class="photo-pick"><span class="pp-lbl">Aadhaar card photo</span>
+            <div class="pp-box" id="t_aadhaarPrev" onclick="document.getElementById('t_aadhaarFile').click()"><span>+ Aadhaar</span></div>
+            <input type="file" id="t_aadhaarFile" accept="image/*" hidden onchange="pickPhoto(event,'t_aadhaarPhoto','t_aadhaarPrev')">
+            <button type="button" class="mini-x" onclick="clearPhoto('t_aadhaarPhoto','t_aadhaarPrev')" title="Remove">clear</button>
+          </div>
+        </div>
         <div class="form-sec">Advance &amp; Security — alag-alag</div>
         <div class="grid">
           <label class="f">Advance — tay hua (₹)<input id="t_advA" type="number" min="0" placeholder="8500" oninput="calcTenantMoney()"></label>
@@ -152,11 +166,26 @@
     <!-- ===================== DATA ===================== -->
     <section id="tab-data" class="page" hidden>
       <div class="card glass">
-        <div class="card-head"><h2>Backup</h2><p>data server par safe hai — phir bhi ek copy rakhna achha hai</p></div>
+        <div class="card-head"><h2>Backup &amp; export</h2><p>data server par safe hai — phir bhi ek copy rakhna achha hai</p></div>
         <div class="actions">
           <button class="btn gold" onclick="exportJSON()">Full backup (.json)</button>
           <button class="btn ghost" onclick="exportCSV()">Rent CSV</button>
           <button class="btn ghost" onclick="exportElecCSV()">Bijli CSV</button>
+          <button class="btn ghost" onclick="exportMotorCSV()">Motor CSV</button>
+          <button class="btn ghost" onclick="exportDepositsCSV()">Deposits CSV</button>
+        </div>
+      </div>
+
+      <div class="card glass">
+        <div class="card-head"><h2>🔒 Password / Lock</h2><p>URL protect karo — bina login app na khule</p></div>
+        <div id="authStatus" class="soft" style="margin-bottom:12px">Checking…</div>
+        <div class="grid" id="authForm">
+          <label class="f">Username<input id="au_user" placeholder="admin"></label>
+          <label class="f">Password (min 4)<input id="au_pass" type="password" placeholder="••••••"></label>
+        </div>
+        <div class="actions">
+          <button class="btn gold" onclick="setPassword()">Enable / update lock</button>
+          <button class="btn ghost" onclick="clearPassword()">Remove lock</button>
         </div>
       </div>
       <div class="card glass">
@@ -199,6 +228,8 @@
       <div id="invoiceArea"></div>
     </div>
   </div>
+
+  <div class="imglb" id="imgLightbox" onclick="this.classList.remove('show')"><img id="imgLightboxImg" alt="preview"></div>
 
   <div class="toast" id="toast"></div>
   <script src="app.js"></script>

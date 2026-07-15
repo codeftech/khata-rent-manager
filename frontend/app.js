@@ -47,6 +47,27 @@ function houseFlats(hid){ return DB.tenants.filter(t=>t.houseId===hid); }
 function houseOccupied(hid){ return houseFlats(hid).filter(t=>t.status!=="vacant"); }
 function secAgreed(t){ return (t.securityAgreed!=null?+t.securityAgreed:+t.deposit)||0; }
 
+/* ---------- theme ---------- */
+function applyTheme(t){ document.documentElement.dataset.theme=t;
+  const b=document.getElementById("themeBtn"); if(b) b.textContent = t==="light" ? "☀" : "☾"; }
+function toggleTheme(){ const cur=document.documentElement.dataset.theme==="light"?"dark":"light";
+  try{ localStorage.setItem("khata-theme",cur); }catch(e){} applyTheme(cur); }
+(function initTheme(){ let t="dark"; try{ t=localStorage.getItem("khata-theme")||"dark"; }catch(e){} applyTheme(t); })();
+
+/* ---------- photos (data-URL) ---------- */
+function pickPhoto(e, hiddenId, prevId){
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>3200000) return toast("Photo bahut badi hai (max ~3MB)", true);
+  const r=new FileReader();
+  r.onload=()=>{ set(hiddenId, r.result); paintPhoto(prevId, r.result); };
+  r.readAsDataURL(f);
+}
+function clearPhoto(hiddenId, prevId){ set(hiddenId,""); paintPhoto(prevId,""); const f=document.getElementById(prevId.replace("Prev","File")); if(f) f.value=""; }
+function paintPhoto(prevId, data){ const el=document.getElementById(prevId); if(!el) return;
+  const label = prevId.indexOf("aadhaar")>=0 ? "+ Aadhaar" : "+ Photo";
+  if(data){ el.style.backgroundImage="url("+data+")"; el.classList.add("has"); el.innerHTML=""; }
+  else { el.style.backgroundImage=""; el.classList.remove("has"); el.innerHTML="<span>"+label+"</span>"; } }
+
 /* ---------- tabs ---------- */
 document.getElementById("tabs").addEventListener("click", e=>{
   const b=e.target.closest("button"); if(!b) return;
@@ -88,6 +109,7 @@ async function saveTenant(){
   if(!room && !name) return toast("Flat ya tenant ka naam zaroori hai", true);
   const body={ houseId:val("t_house"), room, name, phone:val("t_phone").trim(),
     fatherName:val("t_father").trim(), aadhaar:val("t_aadhaar").trim(), permAddress:val("t_perm").trim(),
+    photo:val("t_photo"), aadhaarPhoto:val("t_aadhaarPhoto"),
     rent:+val("t_rent")||0,
     advanceAgreed:+val("t_advA")||0, advancePaid:+val("t_advP")||0,
     securityAgreed:+val("t_secA")||0, securityPaid:+val("t_secP")||0,
@@ -101,12 +123,15 @@ function editTenant(id){ const t=DB.tenants.find(x=>x.id===id); if(!t) return; c
   set("t_phone",t.phone);set("t_aadhaar",t.aadhaar);set("t_perm",t.permAddress);set("t_rent",t.rent);
   set("t_advA",t.advanceAgreed);set("t_advP",t.advancePaid);
   set("t_secA",secAgreed(t));set("t_secP",t.securityPaid);
+  set("t_photo",t.photo||"");set("t_aadhaarPhoto",t.aadhaarPhoto||"");
+  paintPhoto("t_photoPrev",t.photo||"");paintPhoto("t_aadhaarPrev",t.aadhaarPhoto||"");
   set("t_movein",t.moveIn);set("t_status",t.status);set("t_note",t.note); calcTenantMoney();
   document.getElementById("tFormTitle").textContent="Edit flat / tenant"; gotoTab("flats"); scrollTop(); }
 async function delTenant(id){ if(!confirm("Is flat/tenant ko delete karein? Iski rent + bijli sab hat jayegi.")) return;
   try{ await api("DELETE","/api/tenants/"+id); closeFlat(); await refresh(); toast("Deleted"); }catch(e){ toast(e.message,true); } }
-function resetTenantForm(){ ["t_id","t_room","t_name","t_father","t_phone","t_aadhaar","t_perm","t_rent","t_advA","t_advP","t_secA","t_secP","t_note"].forEach(k=>set(k,""));
+function resetTenantForm(){ ["t_id","t_room","t_name","t_father","t_phone","t_aadhaar","t_perm","t_rent","t_advA","t_advP","t_secA","t_secP","t_note","t_photo","t_aadhaarPhoto"].forEach(k=>set(k,""));
   set("t_movein",curMonth()); set("t_status","occupied"); const c=document.getElementById("t_calc"); if(c)c.textContent="";
+  paintPhoto("t_photoPrev","");paintPhoto("t_aadhaarPrev","");
   document.getElementById("tFormTitle").textContent="Naya Flat / Tenant"; }
 
 /* record more advance/security received (from dossier) */
@@ -154,7 +179,7 @@ async function delEbill(id){ if(!confirm("Ye bijli bill delete karein?")) return
 
 /* ---------- motor (common water meter, per property) ---------- */
 function prefillMotor(){ const hid=val("m_house"), m=val("m_month"); if(!hid) return;
-  if(!val("m_split")){ const n=houseOccupied(hid).length||houseFlats(hid).length; if(n) set("m_split",n); }
+  if(!val("m_split")){ const n=houseFlats(hid).length||houseOccupied(hid).length; if(n) set("m_split",n); } // default = TOTAL flats (÷5)
   if(!val("m_prev")){ const bills=DB.motorbills.filter(b=>b.houseId===hid&&b.month!==m).sort((a,b)=>(b.month||"").localeCompare(a.month||""));
     if(bills.length) set("m_prev",bills[0].curr); }
   calcMotor(); }
@@ -337,6 +362,10 @@ function maskAadhaar(a){ a=String(a||"").replace(/\s+/g,""); if(a.length<4) retu
 function pbar(paid,agreed){ const pct=agreed>0?Math.min(100,Math.round(paid/agreed*100)):(paid>0?100:0);
   return `<div class="pbar"><i style="width:${pct}%"></i></div>`; }
 function initialOf(t){ return esc((t.name||t.room||"?").trim().charAt(0).toUpperCase()); }
+function avatarHtml(t, cls){
+  const style = t.photo ? ` style="background-image:url('${t.photo}')"` : "";
+  return `<div class="pc-avatar ${cls||''}${t.photo?' has-photo':''}"${style}>${t.photo?"":initialOf(t)}<span class="pc-flat">${esc(t.room||"—")}</span></div>`;
+}
 
 function renderProfiles(){
   const box=document.getElementById("profileCards"); if(!box) return;
@@ -347,7 +376,7 @@ function renderProfiles(){
     const statusTag = vac?'<span class="tag vacant">Vacant</span>':(dues>0?'<span class="tag due">Baaki '+money(dues)+'</span>':'<span class="tag ok">Clear</span>');
     return `<div class="pcard glass ${vac?'is-vacant':''}" onclick="openFlat('${t.id}')">
       <div class="pc-top">
-        <div class="pc-avatar">${initialOf(t)}<span class="pc-flat">${esc(t.room||"—")}</span></div>
+        ${avatarHtml(t,"")}
         <div class="pc-id"><div class="pc-name">${esc(t.name||"—")}</div>
           <div class="pc-meta">${t.fatherName?"S/o "+esc(t.fatherName)+" · ":""}${esc(hName(t.houseId))}</div></div>
         ${statusTag}
@@ -403,7 +432,7 @@ function renderFlat(tid){
     <div class="dr-head">
       <button class="close" onclick="closeFlat()" aria-label="Close">×</button>
       <div class="dr-hero">
-        <div class="dr-avatar">${initialOf(t)}<span class="pc-flat">${esc(t.room||"—")}</span></div>
+        ${avatarHtml(t,"dr-avatar")}
         <div><div class="dr-name">${esc(t.name||"—")}</div>
           <div class="dr-meta">${t.fatherName?"S/o "+esc(t.fatherName)+" · ":""}${esc(hName(t.houseId))} · Flat ${esc(t.room||"—")}</div>
           <div style="margin-top:8px">${statusTag}</div></div>
@@ -424,6 +453,10 @@ function renderFlat(tid){
         <div class="kv"><span>Move-in</span><b>${monthLabel(t.moveIn)}</b></div>
         <div class="kv"><span>Note</span><b>${esc(t.note||"—")}</b></div>
       </div>
+      ${(t.photo||t.aadhaarPhoto)?`<div class="kyc-photos">
+        ${t.photo?`<div class="kyc-thumb" style="background-image:url('${t.photo}')" onclick="viewFlatImg('${tid}','photo')"><span>Photo</span></div>`:""}
+        ${t.aadhaarPhoto?`<div class="kyc-thumb" style="background-image:url('${t.aadhaarPhoto}')" onclick="viewFlatImg('${tid}','aadhaar')"><span>Aadhaar</span></div>`:""}
+      </div>`:""}
 
       <div class="dr-sec">Advance &amp; Security</div>
       <div class="dr-money">
@@ -461,6 +494,7 @@ function renderFlat(tid){
       <div class="tblwrap"><table><thead><tr><th>Month</th><th class="r">Share</th><th class="r">Amount</th><th>Status</th><th></th></tr></thead><tbody>${motorRows}</tbody></table></div>
 
       <div class="dr-actions">
+        <button class="btn ok" onclick="waShare('${tid}')">WhatsApp</button>
         <button class="btn gold" onclick="openInvoice('${tid}')">Invoice</button>
         <button class="btn ghost" onclick="showLedger('${tid}')">Full ledger</button>
         <button class="btn ghost" onclick="editTenant('${tid}')">Edit flat</button>
@@ -537,6 +571,7 @@ function renderInvoice(){
       <div class="ln grand"><span>Total</span><span>${money(total)}</span></div>
     </div></div>
     <div style="text-align:right;margin-top:8px">${paidTag}</div>
+    <div class="inv-deposits"><span>Advance: ${money(t.advancePaid)} / ${money(t.advanceAgreed)}${advBal(t)>0?" · baaki "+money(advBal(t)):" ✓"}</span><span>Security: ${money(t.securityPaid)} / ${money(secAgreed(t))}${secBal(t)>0?" · baaki "+money(secBal(t)):" ✓"}</span></div>
     <div class="inv-note">Dhanyavaad · Ye invoice KHATA se bana hai</div>
   </div>`;
 }
@@ -561,6 +596,46 @@ async function wipeAll(){ if(!confirm("PAKKA? Saara data delete ho jayega.")) re
   try{ await api("POST","/api/wipe"); selHouse=""; closeFlat(); await refresh(); toast("Sab delete ho gaya"); }catch(e){ toast(e.message,true); } }
 function dl(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
 function csv(s){ return '"'+String(s==null?"":s).replace(/"/g,'""')+'"'; }
+
+/* ---------- whatsapp share ---------- */
+function waDigits(p){ p=String(p||"").replace(/\D/g,""); if(p.length===10) p="91"+p; return p; }
+function waShare(tid){
+  const t=DB.tenants.find(x=>x.id===tid); if(!t) return;
+  const m=curMonth(), c=computeT(t), rentB=Math.max(0,c.balance), tot=rentB+c.elec;
+  const text=`*KHATA — ${hName(t.houseId)}*\nFlat: ${t.room}${t.name?" ("+t.name+")":""}\nMonth: ${monthLabel(m)}\n\nFixed rent: ${money(t.rent)}\nRent baaki: ${money(rentB)}\nBijli + Motor baaki: ${money(c.elec)}\n*Total baaki: ${money(tot)}*\n\nDhanyavaad 🙏`;
+  const ph=waDigits(t.phone);
+  window.open((ph?`https://wa.me/${ph}`:`https://wa.me/`)+`?text=${encodeURIComponent(text)}`,"_blank");
+}
+
+/* ---------- image lightbox ---------- */
+function viewFlatImg(tid,kind){ const t=DB.tenants.find(x=>x.id===tid); if(!t) return;
+  const src=kind==="aadhaar"?t.aadhaarPhoto:t.photo; if(!src) return;
+  document.getElementById("imgLightboxImg").src=src; document.getElementById("imgLightbox").classList.add("show"); }
+
+/* ---------- extra exports ---------- */
+function exportMotorCSV(){ const rows=[["Month","House","Prev","Curr","Units","Rate","Split","Share/flat","Total bill","Paid flats"]];
+  DB.motorbills.slice().sort((a,b)=>(a.month||"").localeCompare(b.month||"")).forEach(m=>{
+    const flats=houseOccupied(m.houseId), paidC=flats.filter(t=>m.paid&&m.paid[t.id]).length;
+    rows.push([m.month,csv(hName(m.houseId)),m.prev,m.curr,m.units,m.rate,m.splitCount,m.shareAmount,Math.round(m.units*m.rate),paidC+"/"+flats.length]); });
+  dl(new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"}),"motor-"+today()+".csv"); toast("Motor CSV ✓"); }
+function exportDepositsCSV(){ const rows=[["House","Flat","Tenant","Phone","Aadhaar","Adv agreed","Adv paid","Adv baaki","Sec agreed","Sec paid","Sec baaki"]];
+  DB.tenants.forEach(t=>{ rows.push([csv(hName(t.houseId)),csv(t.room),csv(t.name),csv(t.phone),csv(t.aadhaar),+t.advanceAgreed||0,+t.advancePaid||0,advBal(t),secAgreed(t),+t.securityPaid||0,secBal(t)]); });
+  dl(new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"}),"deposits-"+today()+".csv"); toast("Deposits CSV ✓"); }
+
+/* ---------- auth / lock ---------- */
+async function loadAuthStatus(){ const el=document.getElementById("authStatus"); if(!el) return;
+  try{ const s=await api("GET","/api/auth-status");
+    el.innerHTML = s.envLocked ? "🔒 Server env par lock set hai — yahan se change nahi hoga."
+      : s.enabled ? "🔒 <b>Lock ON</b> hai. Naya password set karo ya remove karo."
+      : "🔓 Abhi koi lock nahi — URL jise mile wo app khol sakta hai.";
+  }catch(e){ el.textContent="Status check nahi hua."; } }
+async function setPassword(){ const user=val("au_user").trim(), pass=val("au_pass");
+  if(!user||pass.length<4) return toast("Username + kam se kam 4-char password", true);
+  if(!confirm("Lock enable karein? Agli baar app kholne par browser login maangega. Password bhool gaye to server par data/auth.json delete karna padega.")) return;
+  try{ await api("POST","/api/auth",{user,pass}); set("au_pass",""); toast("Lock enabled ✓"); loadAuthStatus(); }
+  catch(e){ toast(e.message,true); } }
+async function clearPassword(){ if(!confirm("Lock hata dein? App phir public ho jayega.")) return;
+  try{ await api("POST","/api/auth",{disable:true}); toast("Lock removed"); loadAuthStatus(); }catch(e){ toast(e.message,true); } }
 
 /* ---------- count-up ---------- */
 function animateCounts(root){ if(!root) return;
@@ -609,5 +684,5 @@ document.addEventListener("click",e=>{ if(e.target.id==="ledgerModal") closeModa
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeModal(); closeInv(); closeFlat(); } });
 
 /* ---------- init ---------- */
-resetHouseForm(); resetTenantForm(); resetMotorForm();
+resetHouseForm(); resetTenantForm(); resetMotorForm(); loadAuthStatus();
 refresh().catch(()=>{ setConn(false); toast("Server se connect nahi hua — 'npm start' chalayein",true); });

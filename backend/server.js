@@ -8,35 +8,51 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 const db = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json({ limit: "4mb" }));
+app.use(express.json({ limit: "16mb" })); // room for KYC/flat photos (base64)
 
-// 🔒 Optional password protection (HTTP Basic Auth).
-// Turns ON automatically only when AUTH_USER and AUTH_PASS are set (via env / Coolify).
-// Password is NEVER stored in code — it lives in the server's environment variables.
-const AUTH_USER = process.env.AUTH_USER || "";
-const AUTH_PASS = process.env.AUTH_PASS || "";
-if (AUTH_USER && AUTH_PASS) {
-  app.use((req, res, next) => {
-    const header = req.headers.authorization || "";
-    const [scheme, encoded] = header.split(" ");
-    if (scheme === "Basic" && encoded) {
-      const decoded = Buffer.from(encoded, "base64").toString("utf8");
-      const i = decoded.indexOf(":");
-      const user = decoded.slice(0, i);
-      const pass = decoded.slice(i + 1);
-      if (user === AUTH_USER && pass === AUTH_PASS) return next();
-    }
-    res.set("WWW-Authenticate", 'Basic realm="Khata"');
-    return res.status(401).send("Khata: login required.");
-  });
-  console.log("  🔒  Password protection ON (Basic Auth)");
+// 🔒 Optional password protection (HTTP Basic Auth), OFF by default.
+// Source of truth: AUTH_USER/AUTH_PASS env (Coolify) OR data/auth.json set from the app.
+// Env, when present, wins and locks the in-app setter.
+const AUTH_FILE = path.join(__dirname, "data", "auth.json");
+function envLocked() { return !!(process.env.AUTH_USER && process.env.AUTH_PASS); }
+function getAuth() {
+  if (envLocked()) return { user: process.env.AUTH_USER, pass: process.env.AUTH_PASS };
+  try { const a = JSON.parse(fs.readFileSync(AUTH_FILE, "utf8")); if (a && a.user && a.pass) return a; } catch (e) {}
+  return null;
 }
+app.use((req, res, next) => {
+  const auth = getAuth();
+  if (!auth) return next();                       // no protection configured
+  if (req.path === "/api/auth-status") return next(); // UI probe stays open
+  const header = req.headers.authorization || "";
+  const [scheme, encoded] = header.split(" ");
+  if (scheme === "Basic" && encoded) {
+    const decoded = Buffer.from(encoded, "base64").toString("utf8");
+    const i = decoded.indexOf(":");
+    if (decoded.slice(0, i) === auth.user && decoded.slice(i + 1) === auth.pass) return next();
+  }
+  res.set("WWW-Authenticate", 'Basic realm="Khata"');
+  return res.status(401).send("Khata: login required.");
+});
+
+// auth management — reachable only when currently unlocked (or after logging in)
+app.get("/api/auth-status", (req, res) => res.json({ enabled: !!getAuth(), envLocked: envLocked() }));
+app.post("/api/auth", (req, res) => {
+  if (envLocked()) return res.status(400).json({ error: "Server env par password set hai — yahan se change nahi hoga." });
+  const b = req.body || {};
+  if (b.disable) { try { fs.unlinkSync(AUTH_FILE); } catch (e) {} return res.json({ enabled: false }); }
+  const user = str(b.user, 60), pass = String(b.pass || "");
+  if (!user || pass.length < 4) return res.status(400).json({ error: "Username + kam se kam 4 character ka password daalein." });
+  fs.writeFileSync(AUTH_FILE, JSON.stringify({ user, pass }));
+  res.json({ enabled: true });
+});
 
 const FRONTEND = path.join(__dirname, "..", "frontend");
 app.use(express.static(FRONTEND));
@@ -45,6 +61,8 @@ const collections = ["houses", "tenants", "payments", "ebills", "motorbills"];
 
 function num(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
 function str(v, n) { return String(v == null ? "" : v).slice(0, n); }
+// data-URL image passthrough; drop anything oversized or non-image
+function img(v) { v = String(v == null ? "" : v); return (v.startsWith("data:image/") && v.length <= 3500000) ? v : ""; }
 
 function cleanHouse(b) {
   return { name: str(b.name, 120), address: str(b.address, 220), note: str(b.note, 300) };
@@ -60,6 +78,8 @@ function cleanTenant(b) {
     fatherName: str(b.fatherName, 120),
     aadhaar: str(b.aadhaar, 20),
     permAddress: str(b.permAddress, 300),
+    photo: img(b.photo),               // tenant/flat photo (data URL)
+    aadhaarPhoto: img(b.aadhaarPhoto), // Aadhaar card scan (data URL)
     rent: num(b.rent),
     advanceAgreed: num(b.advanceAgreed),
     advancePaid: num(b.advancePaid),
