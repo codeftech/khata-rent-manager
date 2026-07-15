@@ -57,9 +57,21 @@ function toggleTheme(){ const cur=document.documentElement.dataset.theme==="ligh
 /* ---------- photos (data-URL) ---------- */
 function pickPhoto(e, hiddenId, prevId){
   const f=e.target.files[0]; if(!f) return;
-  if(f.size>3200000) return toast("Photo bahut badi hai (max ~3MB)", true);
   const r=new FileReader();
-  r.onload=()=>{ set(hiddenId, r.result); paintPhoto(prevId, r.result); };
+  r.onload=()=>{ const im=new Image();
+    im.onload=()=>{ // downscale + compress so it always fits the store and stays fast
+      const max=1280; let w=im.naturalWidth||im.width, h=im.naturalHeight||im.height;
+      if(w>max||h>max){ const k=Math.min(max/w,max/h); w=Math.round(w*k); h=Math.round(h*k); }
+      const cv=document.createElement("canvas"); cv.width=w; cv.height=h;
+      cv.getContext("2d").drawImage(im,0,0,w,h);
+      let data=cv.toDataURL("image/jpeg",0.82);
+      if(data.length>2600000) data=cv.toDataURL("image/jpeg",0.6);
+      if(data.length>3400000) return toast("Photo bahut badi hai — chhoti photo choose karein", true);
+      set(hiddenId,data); paintPhoto(prevId,data);
+    };
+    im.onerror=()=>toast("Photo load nahi hui", true); im.src=r.result;
+  };
+  r.onerror=()=>toast("Photo padhi nahi gayi", true);
   r.readAsDataURL(f);
 }
 function clearPhoto(hiddenId, prevId){ set(hiddenId,""); paintPhoto(prevId,""); const f=document.getElementById(prevId.replace("Prev","File")); if(f) f.value=""; }
