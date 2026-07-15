@@ -216,6 +216,19 @@
     </div>
   </div>
 
+  <!-- receipt / statement modal -->
+  <div class="modal" id="rcptModal">
+    <div class="box glass invwrap">
+      <div class="inv-controls no-print">
+        <button class="close" onclick="closeRcpt()" aria-label="Close">×</button>
+        <span class="inline-f">Tenant <select id="rcpt_tenant" onchange="renderReceipt()"></select></span>
+        <button class="btn ok" onclick="waReceipt()">WhatsApp</button>
+        <button class="btn gold" onclick="printReceipt()">Print / Save PDF</button>
+      </div>
+      <div id="rcptArea"></div>
+    </div>
+  </div>
+
   <!-- invoice modal -->
   <div class="modal" id="invModal">
     <div class="box glass invwrap">

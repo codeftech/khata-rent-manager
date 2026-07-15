@@ -152,7 +152,7 @@ async function receiveMoney(tid, kind){
 async function collectRent(tid){
   const amt=+val("d_p_amount")||0; if(amt<=0) return toast("Amount daalein", true);
   const body={ tenantId:tid, amount:amt, date:val("d_p_date")||today(), forMonth:val("d_p_month")||curMonth(), mode:val("d_p_mode")||"Cash", note:"" };
-  try{ await api("POST","/api/payments", body); await refresh(); toast("Rent received 🎉"); launchConfetti(); }
+  try{ await api("POST","/api/payments", body); await refresh(); toast("Rent received 🎉"); launchConfetti(); openReceipt(tid); }
   catch(e){ toast(e.message,true); }
 }
 async function delPayment(id){ if(!confirm("Ye payment delete karein?")) return;
@@ -494,9 +494,10 @@ function renderFlat(tid){
       <div class="tblwrap"><table><thead><tr><th>Month</th><th class="r">Share</th><th class="r">Amount</th><th>Status</th><th></th></tr></thead><tbody>${motorRows}</tbody></table></div>
 
       <div class="dr-actions">
-        <button class="btn ok" onclick="waShare('${tid}')">WhatsApp</button>
+        <button class="btn ok" onclick="openReceipt('${tid}')">Receipt / PDF</button>
         <button class="btn gold" onclick="openInvoice('${tid}')">Invoice</button>
-        <button class="btn ghost" onclick="showLedger('${tid}')">Full ledger</button>
+        <button class="btn ghost" onclick="waShare('${tid}')">WhatsApp</button>
+        <button class="btn ghost" onclick="showLedger('${tid}')">Ledger</button>
         <button class="btn ghost" onclick="editTenant('${tid}')">Edit flat</button>
         <button class="btn danger" onclick="delTenant('${tid}')">Delete</button>
       </div>
@@ -515,7 +516,67 @@ function renderSelects(){
     opts+=`<optgroup label="${esc(h.name)}">`+ts.map(t=>`<option value="${t.id}">${esc(t.room)}${t.name?" — "+esc(t.name):""}</option>`).join("")+`</optgroup>`; });
   const orphan=DB.tenants.filter(t=>!DB.houses.some(h=>h.id===t.houseId));
   if(orphan.length) opts+=`<optgroup label="Bina ghar">`+orphan.map(t=>`<option value="${t.id}">${esc(t.room)}${t.name?" — "+esc(t.name):""}</option>`).join("")+`</optgroup>`;
-  const s=document.getElementById("inv_tenant"); const k=s.value; s.innerHTML=opts; s.value=k;
+  ["inv_tenant","rcpt_tenant"].forEach(id=>{ const s=document.getElementById(id); if(!s) return; const k=s.value; s.innerHTML=opts; s.value=k; });
+}
+
+/* ---------- receipt / account statement ---------- */
+function stmtFor(t){
+  const c=computeT(t), tid=t.id;
+  const bills=DB.ebills.filter(b=>b.tenantId===tid);
+  const billedMeter=bills.reduce((s,b)=>s+(+b.amount||0),0);
+  const paidMeter=bills.filter(b=>b.paid).reduce((s,b)=>s+(+b.amount||0),0);
+  const motors=t.status==="vacant"?[]:DB.motorbills.filter(m=>m.houseId===t.houseId);
+  const billedMotor=motors.reduce((s,m)=>s+(+m.shareAmount||0),0);
+  const paidMotor=motors.filter(m=>m.paid&&m.paid[tid]).reduce((s,m)=>s+(+m.shareAmount||0),0);
+  const rentDue=c.due, rentPaid=c.paid, rentBal=Math.max(0,c.balance);
+  return { c, rentDue, rentPaid, rentBal,
+    billedMeter, paidMeter, dueMeter:billedMeter-paidMeter,
+    billedMotor, paidMotor, dueMotor:billedMotor-paidMotor,
+    charged:rentDue+billedMeter+billedMotor, received:rentPaid+paidMeter+paidMotor,
+    balance:rentBal+(billedMeter-paidMeter)+(billedMotor-paidMotor),
+    last:DB.payments.filter(p=>p.tenantId===tid).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0] };
+}
+function openReceipt(tid){ set("rcpt_tenant",tid); renderReceipt(); document.getElementById("rcptModal").classList.add("show"); }
+function closeRcpt(){ document.getElementById("rcptModal").classList.remove("show"); }
+function renderReceipt(){
+  const tid=val("rcpt_tenant"); const t=DB.tenants.find(x=>x.id===tid);
+  const area=document.getElementById("rcptArea");
+  if(!t){ area.innerHTML='<div class="invoice"><p style="text-align:center;color:#8a93a1">Tenant select karein</p></div>'; return; }
+  const h=DB.houses.find(x=>x.id===t.houseId)||{}; const s=stmtFor(t);
+  const no="RCPT-"+today().replace(/-/g,"")+"-"+tid.slice(0,4).toUpperCase();
+  const row=(head,ch,rc,bal)=>`<tr><td>${head}</td><td>${money(ch)}</td><td style="color:#1a9f63">${money(rc)}</td><td style="color:${bal>0?'#d63a58':'#1a9f63'}">${money(bal)}</td></tr>`;
+  const advB=advBal(t), secB=secBal(t);
+  area.innerHTML=`<div class="invoice receipt">
+    <div class="inv-top">
+      <div><div class="inv-brand">KHATA<small>estate ledger · payment receipt</small></div></div>
+      <div class="inv-meta">Receipt <b>${no}</b><br>Date: ${fmtDate(today())}</div>
+    </div>
+    <div class="inv-to"><span class="lbl">Received with thanks from</span><br><b>${esc(t.name||t.room)}</b><br>Flat ${esc(t.room)} · ${esc(h.name||"")}${h.address?" · "+esc(h.address):""}${t.phone?"<br>☎ "+esc(t.phone):""}</div>
+    ${s.last?`<div class="rcpt-hero"><span>Amount received · ${fmtDate(s.last.date)} · ${esc(s.last.mode||"")}</span><b>${money(s.last.amount)}</b></div>`:""}
+    <table class="inv-table stmt"><thead><tr><th>Head</th><th>Total hua</th><th>Jama kiya</th><th>Baaki</th></tr></thead><tbody>
+      ${row("Rent — "+s.c.months+" mahine × "+money(t.rent), s.rentDue, s.rentPaid, s.rentBal)}
+      ${row("Bijli (apna meter)", s.billedMeter, s.paidMeter, s.dueMeter)}
+      ${row("Motor / paani share", s.billedMotor, s.paidMotor, s.dueMotor)}
+      <tr class="stmt-total"><td>Total</td><td>${money(s.charged)}</td><td style="color:#1a9f63">${money(s.received)}</td><td style="color:${s.balance>0?'#d63a58':'#1a9f63'}">${money(s.balance)}</td></tr>
+    </tbody></table>
+    <div class="rcpt-dep"><span>Advance: <b>${money(t.advancePaid)}</b> / ${money(t.advanceAgreed)}${advB>0?" · baaki "+money(advB):" ✓"}</span><span>Security: <b>${money(t.securityPaid)}</b> / ${money(secAgreed(t))}${secB>0?" · baaki "+money(secB):" ✓"}</span></div>
+    <div class="rcpt-foot">
+      <div class="stamp ${s.balance>0?'due':'paid'}">${s.balance>0?"BALANCE DUE<br>"+money(s.balance):"FULLY PAID"}</div>
+      <div class="sign"><span></span>Authorised signature</div>
+    </div>
+    <div class="inv-note">Dhanyavaad 🙏 · Ye receipt KHATA se bana hai</div>
+  </div>`;
+}
+function printReceipt(){ if(!val("rcpt_tenant")) return toast("Tenant select karein",true); window.print(); }
+function waReceipt(){
+  const t=DB.tenants.find(x=>x.id===val("rcpt_tenant")); if(!t) return;
+  const s=stmtFor(t);
+  const text=`*KHATA — Payment Receipt*\n${hName(t.houseId)} · Flat ${t.room}${t.name?" ("+t.name+")":""}\nDate: ${fmtDate(today())}\n\n`+
+    (s.last?`Aaj/last jama: *${money(s.last.amount)}* (${fmtDate(s.last.date)}, ${s.last.mode||""})\n\n`:"")+
+    `Total hua: ${money(s.charged)}\nJama kiya: ${money(s.received)}\n*Baaki: ${money(s.balance)}*\n\n`+
+    `Rent baaki: ${money(s.rentBal)}\nBijli baaki: ${money(s.dueMeter)}\nMotor baaki: ${money(s.dueMotor)}\n\nDhanyavaad 🙏`;
+  const ph=waDigits(t.phone);
+  window.open((ph?`https://wa.me/${ph}`:`https://wa.me/`)+`?text=${encodeURIComponent(text)}`,"_blank");
 }
 
 /* ---------- ledger ---------- */
@@ -680,8 +741,8 @@ function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;",
 let _t;
 function toast(msg,err){ const el=document.getElementById("toast"); el.textContent=msg; el.className="toast show"+(err?" err":""); clearTimeout(_t); _t=setTimeout(()=>el.classList.remove("show"),2200); }
 
-document.addEventListener("click",e=>{ if(e.target.id==="ledgerModal") closeModal(); if(e.target.id==="invModal") closeInv(); if(e.target.id==="flatDrawer") closeFlat(); });
-document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeModal(); closeInv(); closeFlat(); } });
+document.addEventListener("click",e=>{ if(e.target.id==="ledgerModal") closeModal(); if(e.target.id==="invModal") closeInv(); if(e.target.id==="rcptModal") closeRcpt(); if(e.target.id==="flatDrawer") closeFlat(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeModal(); closeInv(); closeRcpt(); closeFlat(); } });
 
 /* ---------- init ---------- */
 resetHouseForm(); resetTenantForm(); resetMotorForm(); loadAuthStatus();
