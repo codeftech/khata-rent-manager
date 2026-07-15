@@ -151,8 +151,9 @@ async function receiveMoney(tid, kind){
 /* ---------- rent (from dossier) ---------- */
 async function collectRent(tid){
   const amt=+val("d_p_amount")||0; if(amt<=0) return toast("Amount daalein", true);
-  const body={ tenantId:tid, amount:amt, date:val("d_p_date")||today(), forMonth:val("d_p_month")||curMonth(), mode:val("d_p_mode")||"Cash", note:"" };
-  try{ await api("POST","/api/payments", body); await refresh(); toast("Rent received 🎉"); launchConfetti(); openReceipt(tid); }
+  const forMonth=val("d_p_month")||curMonth();
+  const body={ tenantId:tid, amount:amt, date:val("d_p_date")||today(), forMonth, mode:val("d_p_mode")||"Cash", note:"" };
+  try{ await api("POST","/api/payments", body); await refresh(); toast("Rent received 🎉"); launchConfetti(); openReceipt(tid, forMonth); }
   catch(e){ toast(e.message,true); }
 }
 async function delPayment(id){ if(!confirm("Ye payment delete karein?")) return;
@@ -520,6 +521,7 @@ function renderSelects(){
 }
 
 /* ---------- receipt / account statement ---------- */
+/* full lifetime statement */
 function stmtFor(t){
   const c=computeT(t), tid=t.id;
   const bills=DB.ebills.filter(b=>b.tenantId===tid);
@@ -528,33 +530,59 @@ function stmtFor(t){
   const motors=t.status==="vacant"?[]:DB.motorbills.filter(m=>m.houseId===t.houseId);
   const billedMotor=motors.reduce((s,m)=>s+(+m.shareAmount||0),0);
   const paidMotor=motors.filter(m=>m.paid&&m.paid[tid]).reduce((s,m)=>s+(+m.shareAmount||0),0);
-  const rentDue=c.due, rentPaid=c.paid, rentBal=Math.max(0,c.balance);
-  return { c, rentDue, rentPaid, rentBal,
+  return { mode:"full", months:c.months, rentDue:c.due, rentPaid:c.paid, rentBal:Math.max(0,c.balance),
+    billedMeter, paidMeter, dueMeter:billedMeter-paidMeter,
+    billedMotor, paidMotor, dueMotor:billedMotor-paidMotor,
+    charged:c.due+billedMeter+billedMotor, received:c.paid+paidMeter+paidMotor,
+    balance:Math.max(0,c.balance)+(billedMeter-paidMeter)+(billedMotor-paidMotor),
+    last:DB.payments.filter(p=>p.tenantId===tid).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0] };
+}
+/* single-month statement */
+function stmtForMonth(t,m){
+  const tid=t.id;
+  const rentDue=t.status==="vacant"?0:(+t.rent||0);
+  const rentPaid=DB.payments.filter(p=>p.tenantId===tid&&p.forMonth===m).reduce((s,p)=>s+(+p.amount||0),0);
+  const bills=DB.ebills.filter(b=>b.tenantId===tid&&b.month===m);
+  const billedMeter=bills.reduce((s,b)=>s+(+b.amount||0),0);
+  const paidMeter=bills.filter(b=>b.paid).reduce((s,b)=>s+(+b.amount||0),0);
+  const motors=t.status==="vacant"?[]:DB.motorbills.filter(x=>x.houseId===t.houseId&&x.month===m);
+  const billedMotor=motors.reduce((s,x)=>s+(+x.shareAmount||0),0);
+  const paidMotor=motors.filter(x=>x.paid&&x.paid[tid]).reduce((s,x)=>s+(+x.shareAmount||0),0);
+  const rentBal=Math.max(0,rentDue-rentPaid);
+  return { mode:"month", m, months:1, rentDue, rentPaid, rentBal,
     billedMeter, paidMeter, dueMeter:billedMeter-paidMeter,
     billedMotor, paidMotor, dueMotor:billedMotor-paidMotor,
     charged:rentDue+billedMeter+billedMotor, received:rentPaid+paidMeter+paidMotor,
     balance:rentBal+(billedMeter-paidMeter)+(billedMotor-paidMotor),
-    last:DB.payments.filter(p=>p.tenantId===tid).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0] };
+    last:DB.payments.filter(p=>p.tenantId===tid&&p.forMonth===m).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0] };
 }
-function openReceipt(tid){ set("rcpt_tenant",tid); renderReceipt(); document.getElementById("rcptModal").classList.add("show"); }
+function receiptStmt(t){ const mode=val("rcpt_mode")||"month", m=val("rcpt_month")||curMonth();
+  return mode==="full" ? stmtFor(t) : stmtForMonth(t,m); }
+function openReceipt(tid, forMonth){ set("rcpt_tenant",tid);
+  set("rcpt_mode", forMonth ? "month" : (val("rcpt_mode")||"month"));
+  set("rcpt_month", forMonth || val("rcpt_month") || curMonth());
+  renderReceipt(); document.getElementById("rcptModal").classList.add("show"); }
 function closeRcpt(){ document.getElementById("rcptModal").classList.remove("show"); }
 function renderReceipt(){
   const tid=val("rcpt_tenant"); const t=DB.tenants.find(x=>x.id===tid);
   const area=document.getElementById("rcptArea");
-  if(!t){ area.innerHTML='<div class="invoice"><p style="text-align:center;color:#8a93a1">Tenant select karein</p></div>'; return; }
-  const h=DB.houses.find(x=>x.id===t.houseId)||{}; const s=stmtFor(t);
-  const no="RCPT-"+today().replace(/-/g,"")+"-"+tid.slice(0,4).toUpperCase();
+  if(!t){ area.innerHTML='<div class="invoice"><p style="text-align:center;color:#8a86a0">Tenant select karein</p></div>'; return; }
+  const h=DB.houses.find(x=>x.id===t.houseId)||{}; const s=receiptStmt(t);
+  const isMonth=s.mode==="month";
+  const period=isMonth?monthLabel(s.m):"Full statement";
+  const no="RCPT-"+(isMonth?s.m.replace("-",""):today().replace(/-/g,""))+"-"+tid.slice(0,4).toUpperCase();
+  const rentLabel=isMonth?("Rent — "+monthLabel(s.m)):("Rent — "+s.months+" mahine × "+money(t.rent));
   const row=(head,ch,rc,bal)=>`<tr><td>${head}</td><td>${money(ch)}</td><td style="color:#1a9f63">${money(rc)}</td><td style="color:${bal>0?'#d63a58':'#1a9f63'}">${money(bal)}</td></tr>`;
   const advB=advBal(t), secB=secBal(t);
   area.innerHTML=`<div class="invoice receipt">
     <div class="inv-top">
-      <div><div class="inv-brand">KHATA<small>estate ledger · payment receipt</small></div></div>
-      <div class="inv-meta">Receipt <b>${no}</b><br>Date: ${fmtDate(today())}</div>
+      <div><div class="inv-brand">KHATA<small>estate ledger · ${isMonth?"payment receipt":"account statement"}</small></div></div>
+      <div class="inv-meta">${isMonth?"Receipt":"Statement"} <b>${no}</b><br>Date: ${fmtDate(today())}<br>Period: <b>${period}</b></div>
     </div>
     <div class="inv-to"><span class="lbl">Received with thanks from</span><br><b>${esc(t.name||t.room)}</b><br>Flat ${esc(t.room)} · ${esc(h.name||"")}${h.address?" · "+esc(h.address):""}${t.phone?"<br>☎ "+esc(t.phone):""}</div>
     ${s.last?`<div class="rcpt-hero"><span>Amount received · ${fmtDate(s.last.date)} · ${esc(s.last.mode||"")}</span><b>${money(s.last.amount)}</b></div>`:""}
     <table class="inv-table stmt"><thead><tr><th>Head</th><th>Total hua</th><th>Jama kiya</th><th>Baaki</th></tr></thead><tbody>
-      ${row("Rent — "+s.c.months+" mahine × "+money(t.rent), s.rentDue, s.rentPaid, s.rentBal)}
+      ${row(rentLabel, s.rentDue, s.rentPaid, s.rentBal)}
       ${row("Bijli (apna meter)", s.billedMeter, s.paidMeter, s.dueMeter)}
       ${row("Motor / paani share", s.billedMotor, s.paidMotor, s.dueMotor)}
       <tr class="stmt-total"><td>Total</td><td>${money(s.charged)}</td><td style="color:#1a9f63">${money(s.received)}</td><td style="color:${s.balance>0?'#d63a58':'#1a9f63'}">${money(s.balance)}</td></tr>
@@ -564,15 +592,15 @@ function renderReceipt(){
       <div class="stamp ${s.balance>0?'due':'paid'}">${s.balance>0?"BALANCE DUE<br>"+money(s.balance):"FULLY PAID"}</div>
       <div class="sign"><span></span>Authorised signature</div>
     </div>
-    <div class="inv-note">Dhanyavaad 🙏 · Ye receipt KHATA se bana hai</div>
+    <div class="inv-note">Dhanyavaad 🙏 · Ye ${isMonth?"receipt":"statement"} KHATA se bana hai</div>
   </div>`;
 }
 function printReceipt(){ if(!val("rcpt_tenant")) return toast("Tenant select karein",true); window.print(); }
 function waReceipt(){
   const t=DB.tenants.find(x=>x.id===val("rcpt_tenant")); if(!t) return;
-  const s=stmtFor(t);
-  const text=`*KHATA — Payment Receipt*\n${hName(t.houseId)} · Flat ${t.room}${t.name?" ("+t.name+")":""}\nDate: ${fmtDate(today())}\n\n`+
-    (s.last?`Aaj/last jama: *${money(s.last.amount)}* (${fmtDate(s.last.date)}, ${s.last.mode||""})\n\n`:"")+
+  const s=receiptStmt(t); const period=s.mode==="month"?monthLabel(s.m):"Full (lifetime)";
+  const text=`*KHATA — ${s.mode==="month"?"Payment Receipt":"Account Statement"}*\n${hName(t.houseId)} · Flat ${t.room}${t.name?" ("+t.name+")":""}\nPeriod: ${period}\n\n`+
+    (s.last?`Jama hua: *${money(s.last.amount)}* (${fmtDate(s.last.date)}, ${s.last.mode||""})\n\n`:"")+
     `Total hua: ${money(s.charged)}\nJama kiya: ${money(s.received)}\n*Baaki: ${money(s.balance)}*\n\n`+
     `Rent baaki: ${money(s.rentBal)}\nBijli baaki: ${money(s.dueMeter)}\nMotor baaki: ${money(s.dueMotor)}\n\nDhanyavaad 🙏`;
   const ph=waDigits(t.phone);

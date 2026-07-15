@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>KHATA — Estate Ledger</title>
-<meta name="theme-color" content="#0a0908">
+<meta name="theme-color" content="#070810">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230d0b09'/><text x='50' y='73' font-family='Georgia,serif' font-size='62' font-weight='700' text-anchor='middle' fill='%23e2c489'>K</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23a78bfa'/><stop offset='.5' stop-color='%234fd6e0'/><stop offset='1' stop-color='%23f4c66a'/></linearGradient></defs><rect width='100' height='100' rx='26' fill='%230a0b16'/><text x='50' y='72' font-family='Syne,sans-serif' font-size='60' font-weight='800' text-anchor='middle' fill='url(%23g)'>K</text></svg>">
 </head>
 <body>
   <div class="bg" aria-hidden="true">
@@ -222,6 +222,8 @@
       <div class="inv-controls no-print">
         <button class="close" onclick="closeRcpt()" aria-label="Close">×</button>
         <span class="inline-f">Tenant <select id="rcpt_tenant" onchange="renderReceipt()"></select></span>
+        <span class="inline-f">Type <select id="rcpt_mode" onchange="renderReceipt()"><option value="month">This month</option><option value="full">Full (lifetime)</option></select></span>
+        <span class="inline-f">Month <input type="month" id="rcpt_month" onchange="renderReceipt()"></span>
         <button class="btn ok" onclick="waReceipt()">WhatsApp</button>
         <button class="btn gold" onclick="printReceipt()">Print / Save PDF</button>
       </div>
