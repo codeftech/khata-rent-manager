@@ -65,6 +65,7 @@ function str(v, n) { return String(v == null ? "" : v).slice(0, n); }
 function img(v) { v = String(v == null ? "" : v); return (v.startsWith("data:image/") && v.length <= 3500000) ? v : ""; }
 
 function day1to31(v, def) { const n = Math.round(num(v)) || def; return Math.min(31, Math.max(1, n)); }
+function cleanRentHist(a) { return Array.isArray(a) ? a.slice(-50).map((x) => ({ date: str(x.date, 10), from: num(x.from), to: num(x.to) })) : []; }
 function cleanHouse(b) {
   return { name: str(b.name, 120), address: str(b.address, 220), note: str(b.note, 300),
     motorDueDay: day1to31(b.motorDueDay, 15) };
@@ -89,6 +90,7 @@ function cleanTenant(b) {
     securityPaid: num(b.securityPaid),
     deposit: num(b.deposit), // legacy — kept for old backups
     rentDueDay: day1to31(b.rentDueDay, 5),
+    rentHistory: cleanRentHist(b.rentHistory),
     moveIn: str(b.moveIn, 7),
     status: b.status === "vacant" ? "vacant" : "occupied",
     note: str(b.note, 300),

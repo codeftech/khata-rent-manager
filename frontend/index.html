@@ -73,7 +73,8 @@
         </div>
 
         <div class="card glass chartcard g-chart">
-          <div class="card-head"><h2>Rent collection</h2><p>last 6 months</p></div>
+          <div class="card-head chart-head"><div><h2>Rent collection</h2><p id="chartSub">last 6 months</p></div>
+            <div class="seg" id="chartSeg"><button data-m="6" class="active" onclick="setChartMonths(6)">6M</button><button data-m="12" onclick="setChartMonths(12)">12M</button></div></div>
           <div class="chart" id="chart"></div>
         </div>
         <div class="card glass g-houses">
@@ -94,6 +95,10 @@
         <div class="card glass g-donut">
           <div class="card-head"><h2>Baaki breakdown</h2><p>rent · bijli · motor</p></div>
           <div class="donutwrap"><div class="donut" id="duesDonut"></div><div class="donut-legend" id="duesLegend"></div></div>
+        </div>
+        <div class="card glass g-compare">
+          <div class="card-head"><h2>Ghar-wise comparison</h2><p><span class="lg-dot" style="background:var(--emerald);display:inline-block;vertical-align:middle"></span> mila &nbsp; <span class="lg-dot" style="background:var(--rose);display:inline-block;vertical-align:middle"></span> baaki</p></div>
+          <div class="cmpwrap" id="houseCompare"></div>
         </div>
       </div>
     </section>

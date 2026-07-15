@@ -8,6 +8,8 @@ let DB = { houses: [], tenants: [], payments: [], ebills: [], motorbills: [] };
 let selHouse = "";      // dashboard house filter ("" = all)
 let openFlatId = null;  // currently-open dossier
 let editPayId = null;   // dossier: id of payment being edited (null = new)
+let editEbillId = null; // dossier: id of bijli bill being edited (null = new)
+let chartMonths = 6;    // rent-collection chart window (6 or 12)
 
 /* ---------- api ---------- */
 async function api(method, path, body){
@@ -149,6 +151,12 @@ async function saveTenant(){
     rentDueDay:+val("t_dueday")||5,
     moveIn:val("t_movein")||curMonth(), status:val("t_status"), note:val("t_note").trim() };
   const id=val("t_id");
+  // rent-change history
+  let hist=[]; if(id){ const old=DB.tenants.find(x=>x.id===id);
+    hist=(old&&Array.isArray(old.rentHistory))?old.rentHistory.slice():[];
+    const oldRent=+old?.rent||0, newRent=body.rent;
+    if(oldRent!==newRent && (oldRent>0||newRent>0)) hist.push({date:today(),from:oldRent,to:newRent}); }
+  body.rentHistory=hist;
   try{ await api(id?"PUT":"POST","/api/tenants"+(id?"/"+id:""), body); resetTenantForm(); await refresh(); toast("Flat saved ✓"); }
   catch(e){ toast(e.message,true); }
 }
@@ -172,12 +180,9 @@ function resetTenantForm(){ ["t_id","t_room","t_name","t_father","t_phone","t_aa
 async function receiveMoney(tid, kind){
   const t=DB.tenants.find(x=>x.id===tid); if(!t) return;
   const amt=+val(kind==="adv"?"d_adv":"d_sec")||0; if(amt<=0) return toast("Amount daalein", true);
-  const body={ houseId:t.houseId, room:t.room, name:t.name, phone:t.phone, fatherName:t.fatherName,
-    aadhaar:t.aadhaar, permAddress:t.permAddress, rent:t.rent,
-    advanceAgreed:+t.advanceAgreed||0, advancePaid:+t.advancePaid||0,
-    securityAgreed:secAgreed(t), securityPaid:+t.securityPaid||0,
-    moveIn:t.moveIn, status:t.status, note:t.note };
-  if(kind==="adv") body.advancePaid += amt; else body.securityPaid += amt;
+  const body={...t}; delete body.id;                    // preserve ALL fields (photo, dueDay, rentHistory…)
+  body.securityAgreed=secAgreed(t);
+  if(kind==="adv") body.advancePaid=(+t.advancePaid||0)+amt; else body.securityPaid=(+t.securityPaid||0)+amt;
   try{ await api("PUT","/api/tenants/"+tid, body); await refresh(); toast((kind==="adv"?"Advance":"Security")+" +"+money(amt)+" ✓"); }
   catch(e){ toast(e.message,true); }
 }
@@ -207,10 +212,17 @@ async function addBijli(tid){
   const prev=+val("d_e_prev")||0, curr=+val("d_e_curr")||0, rate=+val("d_e_rate")||0;
   const units=Math.max(0,curr-prev); const amt=+val("d_e_amount")|| units*rate ||0;
   if(amt<=0) return toast("Amount ya reading daalein", true);
-  const body={ tenantId:tid, month:val("d_e_month")||curMonth(), prev, curr, units, rate, amount:Math.round(amt), paid:false, paidDate:"", note:"" };
-  try{ await api("POST","/api/ebills", body); await refresh(); toast("Bijli bill saved ✓"); }
-  catch(e){ toast(e.message,true); }
+  const ex=editEbillId?DB.ebills.find(x=>x.id===editEbillId):null;
+  const body={ tenantId:tid, month:val("d_e_month")||curMonth(), prev, curr, units, rate, amount:Math.round(amt),
+    paid:ex?ex.paid:false, paidDate:ex?ex.paidDate:"", note:ex?ex.note:"" };
+  try{
+    if(editEbillId){ await api("PUT","/api/ebills/"+editEbillId, body); editEbillId=null; await refresh(); toast("Bijli bill updated ✓"); }
+    else { await api("POST","/api/ebills", body); await refresh(); toast("Bijli bill saved ✓"); }
+  }catch(e){ toast(e.message,true); }
 }
+function editEbillD(id){ const b=DB.ebills.find(x=>x.id===id); if(!b) return; editEbillId=id;
+  set("d_e_month",b.month);set("d_e_prev",b.prev);set("d_e_curr",b.curr);set("d_e_rate",b.rate);set("d_e_amount",b.amount);
+  dCalcElec(); toast("Edit mode — badlaav karke 'Add bill' dabayein"); const el=document.getElementById("d_e_curr"); if(el){ el.focus(); el.scrollIntoView({block:"center",behavior:"smooth"}); } }
 async function toggleEbill(id){ const b=DB.ebills.find(x=>x.id===id); if(!b) return;
   const body={...b, paid:!b.paid, paidDate:!b.paid?today():""}; delete body.id;
   try{ await api("PUT","/api/ebills/"+id, body); await refresh(); toast(!b.paid?"Paid 🎉":"Marked unpaid"); if(!b.paid) launchConfetti(); }catch(e){ toast(e.message,true); } }
@@ -363,6 +375,17 @@ function renderDash(){
   renderHouseMini();
   renderDueTracker(ts);
   renderDuesDonut([{v:rentBal,c:"var(--rose)",l:"Rent"},{v:meterPend,c:"var(--cyan)",l:"Bijli"},{v:motorPend,c:"var(--ice)",l:"Motor"}]);
+  renderHouseCompare();
+}
+function renderHouseCompare(){
+  const box=document.getElementById("houseCompare"); if(!box) return;
+  const data=DB.houses.map(h=>{ const ts=DB.tenants.filter(t=>t.houseId===h.id); let coll=0,baaki=0;
+    ts.forEach(t=>{ const c=computeT(t); coll+=c.paid; baaki+=Math.max(0,c.balance)+c.elec; }); return {h,coll,baaki,tot:coll+baaki}; });
+  const max=Math.max(1,...data.map(d=>d.tot));
+  box.innerHTML=data.map(d=>`<div class="cmp-row"><div class="cmp-name">${esc(d.h.name)}</div>`+
+    `<div class="cmp-bar"><i class="cmp-coll" style="width:${d.coll/max*100}%" title="Mila ${money(d.coll)}"></i><i class="cmp-baaki" style="width:${d.baaki/max*100}%" title="Baaki ${money(d.baaki)}"></i></div>`+
+    `<div class="cmp-val">${money(d.baaki)} <span class="soft">baaki</span></div></div>`).join("")
+    || '<span class="soft">Koi ghar nahi.</span>';
 }
 function renderDuesDonut(segs){
   const el=document.getElementById("duesDonut"), leg=document.getElementById("duesLegend"); if(!el) return;
@@ -397,9 +420,13 @@ function setGauge(pct){
   const fill=g.querySelector(".g-fill"); fill.style.strokeDasharray=C; fill.style.strokeDashoffset=C*(1-pct/100);
   document.getElementById("collPct").textContent=pct+"%";
 }
+function setChartMonths(n){ chartMonths=n;
+  document.querySelectorAll("#chartSeg button").forEach(b=>b.classList.toggle("active",+b.dataset.m===n));
+  const sub=document.getElementById("chartSub"); if(sub) sub.textContent="last "+n+" months";
+  const ts=scopeTenants(); renderChart(new Set(ts.map(t=>t.id))); }
 function renderChart(ids){
-  const months=[]; const d=new Date();
-  for(let i=5;i>=0;i--){ const m=new Date(d.getFullYear(),d.getMonth()-i,1); months.push(m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0")); }
+  const n=chartMonths; const months=[]; const d=new Date();
+  for(let i=n-1;i>=0;i--){ const m=new Date(d.getFullYear(),d.getMonth()-i,1); months.push(m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0")); }
   const vals=months.map(m=>DB.payments.filter(p=>ids.has(p.tenantId)&&p.forMonth===m).reduce((s,p)=>s+(+p.amount||0),0));
   const max=Math.max(1,...vals);
   document.getElementById("chart").innerHTML=months.map((m,i)=>{
@@ -490,8 +517,12 @@ function renderProfiles(){
 }
 
 /* ---------- flat dossier drawer (the hub) ---------- */
-function openFlat(tid){ openFlatId=tid; editPayId=null; renderFlat(tid); document.getElementById("flatDrawer").classList.add("show"); document.body.style.overflow="hidden"; }
-function closeFlat(){ openFlatId=null; editPayId=null; document.getElementById("flatDrawer").classList.remove("show"); document.body.style.overflow=""; }
+function openFlat(tid){ openFlatId=tid; editPayId=null; editEbillId=null; renderFlat(tid); document.getElementById("flatDrawer").classList.add("show"); document.body.style.overflow="hidden"; }
+function closeFlat(){ openFlatId=null; editPayId=null; editEbillId=null; document.getElementById("flatDrawer").classList.remove("show"); document.body.style.overflow=""; }
+function revealAadhaar(tid){ const t=DB.tenants.find(x=>x.id===tid); if(!t) return;
+  const el=document.getElementById("drAadhaar"), btn=document.getElementById("drAadhaarBtn"); if(!el) return;
+  if(el.dataset.shown==="1"){ el.textContent=maskAadhaar(t.aadhaar); el.dataset.shown="0"; if(btn)btn.textContent="show"; }
+  else { el.textContent=t.aadhaar||"—"; el.dataset.shown="1"; if(btn)btn.textContent="hide"; } }
 function renderFlat(tid){
   const t=DB.tenants.find(x=>x.id===tid); if(!t){ closeFlat(); return; }
   const c=computeT(t); const vac=t.status==="vacant"; const cm=curMonth(); const di=rentDueInfo(t);
@@ -506,7 +537,7 @@ function renderFlat(tid){
 
   // bijli history (own meter)
   const bills=DB.ebills.filter(b=>b.tenantId===tid).sort((a,b)=>(b.month||"").localeCompare(a.month||""));
-  const billRows=bills.map(b=>`<tr><td>${monthLabel(b.month)}</td><td class="r">${b.prev||"—"}→${b.curr||"—"}</td><td class="r">${b.units||"—"}u</td><td class="r money" style="color:var(--cyan)">${money(b.amount)}</td><td>${b.paid?'<span class="tag ok">Paid</span>':'<span class="tag due">Unpaid</span>'}</td><td class="r"><button class="btn sm ${b.paid?'ghost':'ok'}" onclick="toggleEbill('${b.id}')">${b.paid?'Unpaid':'Paid'}</button> <button class="btn sm danger" onclick="delEbill('${b.id}')">✕</button></td></tr>`).join("")
+  const billRows=bills.map(b=>`<tr><td>${monthLabel(b.month)}</td><td class="r">${b.prev||"—"}→${b.curr||"—"}</td><td class="r">${b.units||"—"}u</td><td class="r money" style="color:var(--cyan)">${money(b.amount)}</td><td>${b.paid?'<span class="tag ok">Paid</span>':'<span class="tag due">Unpaid</span>'}</td><td class="r"><button class="btn sm ${b.paid?'ghost':'ok'}" onclick="toggleEbill('${b.id}')">${b.paid?'Unpaid':'Paid'}</button> <button class="btn sm ghost" onclick="editEbillD('${b.id}')">Edit</button> <button class="btn sm danger" onclick="delEbill('${b.id}')">✕</button></td></tr>`).join("")
     || `<tr><td colspan="6" class="soft" style="text-align:center">Abhi koi bijli bill nahi.</td></tr>`;
   const lastCurr = bills.length ? bills[0].curr : "";
 
@@ -536,11 +567,12 @@ function renderFlat(tid){
       <div class="dr-sec">KYC</div>
       <div class="dr-kv">
         <div class="kv"><span>Phone</span><b>${esc(t.phone||"—")}</b></div>
-        <div class="kv"><span>Aadhaar</span><b>${esc(t.aadhaar||"—")}</b></div>
+        <div class="kv"><span>Aadhaar ${t.aadhaar?`<button class="reveal-btn" id="drAadhaarBtn" onclick="revealAadhaar('${tid}')">show</button>`:""}</span><b id="drAadhaar" data-shown="0">${esc(maskAadhaar(t.aadhaar))}</b></div>
         <div class="kv wide"><span>Native address</span><b>${esc(t.permAddress||"—")}</b></div>
         <div class="kv"><span>Move-in</span><b>${monthLabel(t.moveIn)}</b></div>
-        <div class="kv"><span>Note</span><b>${esc(t.note||"—")}</b></div>
+        <div class="kv"><span>Rent due day</span><b>${ord(rentDueInfo(t).day)}</b></div>
       </div>
+      ${(Array.isArray(t.rentHistory)&&t.rentHistory.length)?`<div class="rent-hist"><span class="rh-lbl">Rent changes:</span> ${t.rentHistory.slice().reverse().map(x=>`${money(x.from)} → <b>${money(x.to)}</b> <span class="soft">(${fmtDate(x.date)})</span>`).join(" · ")}</div>`:""}
       ${(t.photo||t.aadhaarPhoto)?`<div class="kyc-photos">
         ${t.photo?`<div class="kyc-thumb" style="background-image:url('${t.photo}')" onclick="viewFlatImg('${tid}','photo')"><span>Photo</span></div>`:""}
         ${t.aadhaarPhoto?`<div class="kyc-thumb" style="background-image:url('${t.aadhaarPhoto}')" onclick="viewFlatImg('${tid}','aadhaar')"><span>Aadhaar</span></div>`:""}
