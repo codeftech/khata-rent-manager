@@ -323,14 +323,14 @@ function renderDash(){
   document.getElementById("heroSub").textContent = grand>0 ? "total baaki · rent + bijli + motor" : "sab clear — koi baaki nahi ✦";
 
   document.getElementById("dashStats").innerHTML=
-    statN("Flats",ts.length,"int","",occ+" occ · "+vac+" vacant","flats") +
-    statN("Monthly rent",totMonthly,"money","gold","expected / month","flats") +
-    statN("Rent collected",totPaid,"money","ok","ab tak total","flats") +
-    statN("Rent baaki",rentBal,"money",rentBal>0?"due":"ok","","flats") +
-    statN("Bijli + Motor baaki",elecPend,"money",elecPend>0?"cyan":"ok",money(elecColl)+" mila","props") +
-    statN("Grand total baaki",grand,"money",grand>0?"due":"ok","rent + bijli + motor","flats") +
-    statN("Security held",secHeld,"money","gold","jama hai","flats") +
-    statN("Advance+Security baaki",advDueSum+secDueSum,"money",(advDueSum+secDueSum)>0?"warn":"ok",money(advDueSum)+" adv · "+money(secDueSum)+" sec","flats");
+    statN("Flats",ts.length,"int","",occ+" occ · "+vac+" vacant","flats","flats") +
+    statN("Monthly rent",totMonthly,"money","gold","expected / month","flats","rent") +
+    statN("Rent collected",totPaid,"money","ok","ab tak total","flats","ok") +
+    statN("Rent baaki",rentBal,"money",rentBal>0?"due":"ok","","flats","due") +
+    statN("Bijli + Motor baaki",elecPend,"money",elecPend>0?"cyan":"ok",money(elecColl)+" mila","props","bolt") +
+    statN("Grand total baaki",grand,"money",grand>0?"due":"ok","rent + bijli + motor","flats","grand") +
+    statN("Security held",secHeld,"money","gold","jama hai","flats","shield") +
+    statN("Advance+Security baaki",advDueSum+secDueSum,"money",(advDueSum+secDueSum)>0?"warn":"ok",money(advDueSum)+" adv · "+money(secDueSum)+" sec","flats","inbox");
   animateCounts(document.getElementById("dashStats"));
   animateCounts(document.querySelector(".hero"));
 
@@ -340,6 +340,19 @@ function renderDash(){
     collThis+=DB.payments.filter(p=>p.tenantId===t.id&&p.forMonth===cm).reduce((s,p)=>s+(+p.amount||0),0); });
   const pct=expThis>0?Math.min(100,Math.round(collThis/expThis*100)):0;
   setGauge(pct);
+
+  // hero KPIs + month-over-month trend
+  const now2=new Date(), pmD=new Date(now2.getFullYear(),now2.getMonth()-1,1);
+  const lm=pmD.getFullYear()+"-"+String(pmD.getMonth()+1).padStart(2,"0");
+  const lastColl=DB.payments.filter(p=>ids.has(p.tenantId)&&p.forMonth===lm).reduce((s,p)=>s+(+p.amount||0),0);
+  let trend="";
+  if(lastColl>0){ const tp=Math.round((collThis-lastColl)/lastColl*100);
+    trend=` <i class="trend ${tp>=0?'up':'down'}">${tp>=0?'▲':'▼'} ${Math.abs(tp)}%</i>`; }
+  const hk=document.getElementById("heroKpis");
+  if(hk){ hk.innerHTML=
+    `<div class="hk"><b>${occ}/${ts.length}</b><span>occupied</span></div>`+
+    `<div class="hk"><b>${money(collThis)}</b><span>collected ${monthLabel(cm)}${trend}</span></div>`+
+    `<div class="hk"><b>${pct}%</b><span>collection rate</span></div>`; }
 
   // selectable month view
   if(!val("dashMonth")) set("dashMonth",cm);
@@ -880,10 +893,21 @@ function launchConfetti(){
 /* ---------- utils ---------- */
 function val(id){ const el=document.getElementById(id); return el?el.value:""; }
 function set(id,v){ const el=document.getElementById(id); if(el) el.value=(v==null?"":v); }
-function statN(l,to,fmt,cls,sub,nav){
+const IC={
+  flats:'<path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5"/>',
+  rent:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16.5 14H18"/>',
+  ok:'<path d="M20 6 9 17l-5-5"/>',
+  due:'<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>',
+  bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
+  grand:'<path d="M12 3 3 8l9 5 9-5-9-5zM3 13l9 5 9-5M3 17l9 5 9-5"/>',
+  shield:'<path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/>',
+  inbox:'<path d="M12 3v10m0 0 4-4m-4 4-4-4M4 20h16"/>'
+};
+function icSvg(k){ return k?`<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">${IC[k]||""}</svg></span>`:""; }
+function statN(l,to,fmt,cls,sub,nav,ic){
   const subHtml = sub ? `<div class="sub">${sub}</div>` : "";
   const clk = nav ? ` onclick="gotoTab('${nav}')"` : "";
-  return `<div class="stat${nav?" clickable":""}"${clk}><div class="lbl">${l}</div><div class="val ${cls||""}" data-to="${to}" data-fmt="${fmt}">0</div>${subHtml}</div>`;
+  return `<div class="stat${nav?" clickable":""}"${clk}>${icSvg(ic)}<div class="lbl">${l}</div><div class="val ${cls||""}" data-to="${to}" data-fmt="${fmt}">0</div>${subHtml}</div>`;
 }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 let _t;
