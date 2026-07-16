@@ -20,7 +20,11 @@ async function api(method, path, body){
   if(!res.ok) throw new Error((await res.json().catch(()=>({}))).error || res.statusText);
   return res.status===204 ? null : res.json();
 }
-async function refresh(){ DB = await api("GET","/api/state"); setConn(true); renderAll(); if(openFlatId) renderFlat(openFlatId); }
+async function refresh(){ DB = await api("GET","/api/state");
+  if(!DB.houses.length){ await api("POST","/api/houses",{name:"Musa Mention",motorDueDay:15}); DB = await api("GET","/api/state"); }
+  setConn(true); renderAll(); if(openFlatId) renderFlat(openFlatId); }
+function theHouse(){ return DB.houses[0]||{name:"Musa Mention"}; }
+function theHouseId(){ return DB.houses[0]?DB.houses[0].id:""; }
 function setConn(ok){ const el=document.getElementById("conn"); el.className="status "+(ok?"on":"off");
   el.title = ok ? "Server connected" : "Server band hai — 'npm start' chalayein"; }
 
@@ -108,7 +112,7 @@ document.getElementById("tabs").addEventListener("click", e=>{
   const b=e.target.closest("button"); if(!b) return;
   document.querySelectorAll("#tabs button").forEach(x=>x.classList.remove("active"));
   b.classList.add("active");
-  ["dash","flats","monthly","props","data"].forEach(t=>{ document.getElementById("tab-"+t).hidden=(t!==b.dataset.tab); });
+  ["dash","flats","monthly","motor","data"].forEach(t=>{ document.getElementById("tab-"+t).hidden=(t!==b.dataset.tab); });
 });
 function gotoTab(n){ document.querySelector('#tabs button[data-tab="'+n+'"]').click(); }
 function scrollTop(){ window.scrollTo({top:0,behavior:"smooth"}); }
@@ -142,7 +146,7 @@ function calcTenantMoney(){
 async function saveTenant(){
   const room=val("t_room").trim(), name=val("t_name").trim();
   if(!room && !name) return toast("Flat ya tenant ka naam zaroori hai", true);
-  const body={ houseId:val("t_house"), room, name, phone:val("t_phone").trim(),
+  const body={ houseId:theHouseId(), room, name, phone:val("t_phone").trim(),
     fatherName:val("t_father").trim(), aadhaar:val("t_aadhaar").trim(), permAddress:val("t_perm").trim(),
     photo:val("t_photo"), aadhaarPhoto:val("t_aadhaarPhoto"),
     rent:+val("t_rent")||0,
@@ -230,8 +234,9 @@ async function delEbill(id){ if(!confirm("Ye bijli bill delete karein?")) return
   try{ await api("DELETE","/api/ebills/"+id); await refresh(); toast("Deleted"); }catch(e){ toast(e.message,true); } }
 
 /* ---------- motor (common water meter, per property) ---------- */
-function prefillMotor(){ const hid=val("m_house"), m=val("m_month"); if(!hid) return;
-  if(!val("m_split")){ const n=houseFlats(hid).length||houseOccupied(hid).length; if(n) set("m_split",n); } // default = TOTAL flats (÷5)
+function prefillMotor(){ const hid=theHouseId(), m=val("m_month"); if(!hid) return;
+  if(!val("m_split")){ const n=houseFlats(hid).length||houseOccupied(hid).length; if(n) set("m_split",n); } // default = TOTAL flats
+  if(!val("m_dueday")) set("m_dueday", theHouse().motorDueDay||15);
   if(!val("m_prev")){ const bills=DB.motorbills.filter(b=>b.houseId===hid&&b.month!==m).sort((a,b)=>(b.month||"").localeCompare(a.month||""));
     if(bills.length) set("m_prev",bills[0].curr); }
   calcMotor(); }
@@ -245,7 +250,7 @@ function calcMotor(){ const prev=+val("m_prev")||0, curr=+val("m_curr")||0, rate
       `<div class="mp-line total"><span>Total motor bill</span><b>${money(Math.round(units*rate))}</b></div>`
     : ""; }
 async function saveMotor(){
-  const hid=val("m_house"); if(!hid) return toast("Ghar select karein", true);
+  const hid=theHouseId(); if(!hid) return toast("Property nahi mili", true);
   const prev=+val("m_prev")||0, curr=+val("m_curr")||0, rate=+val("m_rate")||0;
   if(curr<=prev) return toast("Current reading prev se zyada honi chahiye", true);
   if(rate<=0) return toast("Rate daalein", true);
@@ -253,13 +258,17 @@ async function saveMotor(){
   const body={ houseId:hid, month:val("m_month")||curMonth(), prev, curr, rate,
     splitCount:Math.max(1,+val("m_split")||1), note:val("m_note").trim(),
     paid:existing?existing.paid:{}, paidDate:existing?existing.paidDate:{} };
-  try{ await api(id?"PUT":"POST","/api/motorbills"+(id?"/"+id:""), body); resetMotorForm(); await refresh(); toast("Motor reading saved ✓"); }
-  catch(e){ toast(e.message,true); }
+  // motor due day lives on the property — update if changed
+  const dd=+val("m_dueday")||15; const h=theHouse();
+  try{
+    if(h.id && (h.motorDueDay||15)!==dd){ await api("PUT","/api/houses/"+h.id, {name:h.name,address:h.address,note:h.note,motorDueDay:dd}); }
+    await api(id?"PUT":"POST","/api/motorbills"+(id?"/"+id:""), body); resetMotorForm(); await refresh(); toast("Motor reading saved ✓");
+  }catch(e){ toast(e.message,true); }
 }
 function editMotor(id){ const b=DB.motorbills.find(x=>x.id===id); if(!b) return;
-  set("m_id",b.id);set("m_house",b.houseId);set("m_month",b.month);set("m_prev",b.prev);set("m_curr",b.curr);
-  set("m_rate",b.rate);set("m_split",b.splitCount);set("m_note",b.note); calcMotor();
-  document.getElementById("mFormTitle").textContent="Edit motor reading"; gotoTab("props"); scrollTop(); }
+  set("m_id",b.id);set("m_month",b.month);set("m_prev",b.prev);set("m_curr",b.curr);
+  set("m_rate",b.rate);set("m_split",b.splitCount);set("m_note",b.note);set("m_dueday",theHouse().motorDueDay||15); calcMotor();
+  document.getElementById("mFormTitle").textContent="Edit motor reading"; gotoTab("motor"); scrollTop(); }
 async function delMotor(id){ if(!confirm("Ye motor reading delete karein?")) return;
   try{ await api("DELETE","/api/motorbills/"+id); await refresh(); toast("Deleted"); }catch(e){ toast(e.message,true); } }
 async function toggleMotorPaid(id,tid){ const b=DB.motorbills.find(x=>x.id===id); if(!b) return;
@@ -268,11 +277,8 @@ async function toggleMotorPaid(id,tid){ const b=DB.motorbills.find(x=>x.id===id)
   const body={...b, paid, paidDate}; delete body.id;
   try{ await api("PUT","/api/motorbills/"+id, body); await refresh(); }catch(e){ toast(e.message,true); } }
 function resetMotorForm(){ ["m_id","m_prev","m_curr","m_rate","m_split","m_note"].forEach(k=>set(k,"")); set("m_month",curMonth());
-  document.getElementById("m_preview").innerHTML=""; document.getElementById("mFormTitle").textContent="Motor reading"; }
-function renderMotorHouseSelect(){ const s=document.getElementById("m_house"); const k=s.value;
-  s.innerHTML = DB.houses.length ? DB.houses.map(h=>`<option value="${h.id}">${esc(h.name)}</option>`).join("")
-    : '<option value="">— pehle ghar add karein —</option>';
-  s.value=k || (DB.houses[0]?DB.houses[0].id:""); }
+  set("m_dueday",theHouse().motorDueDay||15); prefillMotor();
+  const p=document.getElementById("m_preview"); if(p)p.innerHTML=""; const ft=document.getElementById("mFormTitle"); if(ft)ft.textContent="Motor / paani ka common meter"; }
 function renderMotor(){
   const wrap=document.getElementById("motorList");
   const list=DB.motorbills.slice().sort((a,b)=>(b.month||"").localeCompare(a.month||"")||hName(a.houseId).localeCompare(hName(b.houseId)));
@@ -294,17 +300,15 @@ function renderMotor(){
 }
 
 /* ---------- MONTHLY SHEET (excel-style fast entry) ---------- */
-function renderMonthlyHouseSelect(){ const s=document.getElementById("ms_house"); if(!s) return; const k=s.value;
-  s.innerHTML = DB.houses.length ? DB.houses.map(h=>`<option value="${h.id}">${esc(h.name)}</option>`).join("")
-    : '<option value="">— pehle ghar add karein —</option>';
-  s.value=k || (DB.houses[0]?DB.houses[0].id:""); }
-
 function msLastBill(tid, month){ // most recent bill before selected month
   return DB.ebills.filter(b=>b.tenantId===tid && (b.month||"")<month).sort((a,b)=>(b.month||"").localeCompare(a.month||""))[0]; }
+function shiftMonth(m,delta){ const p=(m||curMonth()).split("-"); const d=new Date(+p[0],+p[1]-1+delta,1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+function msPrev(){ set("ms_month",shiftMonth(val("ms_month")||curMonth(),-1)); renderMonthlySheet(); }
+function msNext(){ set("ms_month",shiftMonth(val("ms_month")||curMonth(),1)); renderMonthlySheet(); }
 
 function renderMonthlySheet(){
   const body=document.getElementById("msBody"); if(!body) return;
-  const hid=val("ms_house"); if(!val("ms_month")) set("ms_month",curMonth());
+  const hid=theHouseId(); if(!val("ms_month")) set("ms_month",curMonth());
   const month=val("ms_month")||curMonth();
   const flats=houseOccupied(hid).slice().sort((a,b)=>String(a.room).localeCompare(String(b.room),undefined,{numeric:true}));
   document.getElementById("msEmpty").hidden=flats.length>0;
@@ -364,21 +368,16 @@ async function commitMonthRow(tid, month){
 }
 async function saveMonthRow(tid){ const month=val("ms_month")||curMonth();
   try{ await commitMonthRow(tid,month); await refresh(); toast("Saved ✓"); }catch(e){ toast(e.message,true); } }
-async function saveAllMonth(){ const hid=val("ms_house"), month=val("ms_month")||curMonth();
+async function saveAllMonth(){ const hid=theHouseId(), month=val("ms_month")||curMonth();
   const flats=houseOccupied(hid); if(!flats.length) return toast("Koi flat nahi",true);
   try{ for(const t of flats) await commitMonthRow(t.id,month); await refresh(); toast("Poore ghar ka "+monthLabel(month)+" save ✓ 🎉"); launchConfetti(); }
   catch(e){ toast(e.message,true); }
 }
 
 /* ---------- render orchestration ---------- */
-function renderAll(){ renderChips(); renderDash(); renderHouses(); renderProfiles(); renderSelects(); renderMotorHouseSelect(); renderMotor(); renderMonthlyHouseSelect(); renderMonthlySheet(); }
+function renderAll(){ renderBrand(); renderDash(); renderProfiles(); renderSelects(); renderMotor(); renderMonthlySheet(); loadSettings(); }
 
-function renderChips(){
-  let h='<button class="'+(selHouse===""?"active":"")+'" onclick="pickHouse(\'\')">Sab ghar</button>';
-  DB.houses.forEach(x=>{ h+='<button class="'+(selHouse===x.id?"active":"")+'" onclick="pickHouse(\''+x.id+'\')">'+esc(x.name)+'</button>'; });
-  document.getElementById("houseChips").innerHTML = DB.houses.length ? h : '<span class="soft">Properties tab se ghar add karein.</span>';
-}
-function pickHouse(id){ selHouse=id; renderChips(); renderDash(); renderProfiles(); }
+function renderBrand(){ const el=document.getElementById("heroHouse"); if(el) el.textContent=theHouse().name||"Portfolio"; }
 
 /* ---------- dashboard ---------- */
 function renderDash(){
@@ -395,7 +394,7 @@ function renderDash(){
   const rentBal=Math.max(0,totDue-totPaid), grand=rentBal+elecPend;
 
   // hero
-  document.getElementById("heroHouse").textContent = selHouse ? hName(selHouse) : "Full portfolio";
+  document.getElementById("heroHouse").textContent = theHouse().name || "Portfolio";
   const hd=document.getElementById("heroDue"); hd.dataset.to=grand; hd.dataset.fmt="plain";
   document.getElementById("heroSub").textContent = grand>0 ? "total baaki · rent + bijli + motor" : "sab clear — koi baaki nahi ✦";
 
@@ -465,17 +464,17 @@ function renderDash(){
   renderHouseMini();
   renderDueTracker(ts);
   renderDuesDonut([{v:rentBal,c:"var(--rose)",l:"Rent"},{v:meterPend,c:"var(--cyan)",l:"Bijli"},{v:motorPend,c:"var(--ice)",l:"Motor"}]);
-  renderHouseCompare();
+  renderFlatCompare(ts);
 }
-function renderHouseCompare(){
-  const box=document.getElementById("houseCompare"); if(!box) return;
-  const data=DB.houses.map(h=>{ const ts=DB.tenants.filter(t=>t.houseId===h.id); let coll=0,baaki=0;
-    ts.forEach(t=>{ const c=computeT(t); coll+=c.paid; baaki+=Math.max(0,c.balance)+c.elec; }); return {h,coll,baaki,tot:coll+baaki}; });
+function renderFlatCompare(ts){
+  const box=document.getElementById("flatCompare"); if(!box) return;
+  const data=ts.filter(t=>t.status!=="vacant").map(t=>{ const c=computeT(t);
+    return {t,coll:c.paid,baaki:Math.max(0,c.balance)+c.elec,tot:c.paid+Math.max(0,c.balance)+c.elec}; });
   const max=Math.max(1,...data.map(d=>d.tot));
-  box.innerHTML=data.map(d=>`<div class="cmp-row"><div class="cmp-name">${esc(d.h.name)}</div>`+
+  box.innerHTML=data.map(d=>`<div class="cmp-row"><div class="cmp-name">${esc(d.t.room)}${d.t.name?" · "+esc(d.t.name.split(' ')[0]):""}</div>`+
     `<div class="cmp-bar"><i class="cmp-coll" style="width:${d.coll/max*100}%" title="Mila ${money(d.coll)}"></i><i class="cmp-baaki" style="width:${d.baaki/max*100}%" title="Baaki ${money(d.baaki)}"></i></div>`+
     `<div class="cmp-val">${money(d.baaki)} <span class="soft">baaki</span></div></div>`).join("")
-    || '<span class="soft">Koi ghar nahi.</span>';
+    || '<span class="soft">Koi flat nahi.</span>';
 }
 function renderDuesDonut(segs){
   const el=document.getElementById("duesDonut"), leg=document.getElementById("duesLegend"); if(!el) return;
@@ -659,7 +658,7 @@ function renderFlat(tid){
         <div class="kv"><span>Phone</span><b>${esc(t.phone||"—")}</b></div>
         <div class="kv"><span>Aadhaar ${t.aadhaar?`<button class="reveal-btn" id="drAadhaarBtn" onclick="revealAadhaar('${tid}')">show</button>`:""}</span><b id="drAadhaar" data-shown="0">${esc(maskAadhaar(t.aadhaar))}</b></div>
         <div class="kv wide"><span>Native address</span><b>${esc(t.permAddress||"—")}</b></div>
-        <div class="kv"><span>Move-in</span><b>${monthLabel(t.moveIn)}</b></div>
+        <div class="kv"><span>Since · duration</span><b>${monthLabel(t.moveIn)} · ${c.months} mo</b></div>
         <div class="kv"><span>Rent due day</span><b>${ord(rentDueInfo(t).day)}</b></div>
       </div>
       ${(Array.isArray(t.rentHistory)&&t.rentHistory.length)?`<div class="rent-hist"><span class="rh-lbl">Rent changes:</span> ${t.rentHistory.slice().reverse().map(x=>`${money(x.from)} → <b>${money(x.to)}</b> <span class="soft">(${fmtDate(x.date)})</span>`).join(" · ")}</div>`:""}
@@ -716,10 +715,7 @@ function renderFlat(tid){
 
 /* ---------- selects (flat form, motor form, invoice) ---------- */
 function renderSelects(){
-  const hs=document.getElementById("t_house"); const hk=hs.value;
-  hs.innerHTML = DB.houses.length ? DB.houses.map(h=>`<option value="${h.id}">${esc(h.name)}</option>`).join("")
-    : '<option value="">— pehle ghar add karein —</option>';
-  hs.value=hk || (DB.houses[0]?DB.houses[0].id:"");
+  set("t_house", theHouseId());
   // invoice tenant select
   let opts='<option value="">— select tenant —</option>';
   DB.houses.forEach(h=>{ const ts=DB.tenants.filter(t=>t.houseId===h.id); if(!ts.length) return;
@@ -990,10 +986,47 @@ function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;",
 let _t;
 function toast(msg,err){ const el=document.getElementById("toast"); el.textContent=msg; el.className="toast show"+(err?" err":""); clearTimeout(_t); _t=setTimeout(()=>el.classList.remove("show"),2200); }
 
-document.addEventListener("click",e=>{ if(e.target.id==="ledgerModal") closeModal(); if(e.target.id==="invModal") closeInv(); if(e.target.id==="rcptModal") closeRcpt(); if(e.target.id==="flatDrawer") closeFlat(); });
-document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeModal(); closeInv(); closeRcpt(); closeFlat(); } });
+document.addEventListener("click",e=>{ if(e.target.id==="ledgerModal") closeModal(); if(e.target.id==="invModal") closeInv(); if(e.target.id==="rcptModal") closeRcpt(); if(e.target.id==="reportModal") closeReport(); if(e.target.id==="flatDrawer") closeFlat(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeModal(); closeInv(); closeRcpt(); closeReport(); closeFlat(); } });
+
+/* ---------- property settings ---------- */
+function loadSettings(){ const h=theHouse(); set("s_name",h.name||""); set("s_addr",h.address||""); }
+async function saveSettings(){ const h=theHouse(); if(!h.id) return;
+  const body={ name:val("s_name").trim()||"Musa Mention", address:val("s_addr").trim(), note:h.note||"", motorDueDay:h.motorDueDay||15 };
+  try{ await api("PUT","/api/houses/"+h.id, body); await refresh(); toast("Settings saved ✓"); }catch(e){ toast(e.message,true); } }
+
+/* ---------- portfolio report (PDF) ---------- */
+function openReport(){ if(!val("rep_date")) set("rep_date",today()); renderReport(); document.getElementById("reportModal").classList.add("show"); }
+function closeReport(){ document.getElementById("reportModal").classList.remove("show"); }
+function printReport(){ window.print(); }
+function renderReport(){
+  const asOf=val("rep_date")||today(); const h=theHouse();
+  const ts=DB.tenants.slice().sort((a,b)=>String(a.room).localeCompare(String(b.room),undefined,{numeric:true}));
+  let tRent=0,tPaid=0,tRentBal=0,tElec=0,tAdv=0,tSec=0,tSecHeld=0;
+  const rows=ts.map(t=>{ const c=computeT(t); const vac=t.status==="vacant";
+    if(!vac){ tRent+=+t.rent||0; } tPaid+=c.paid; tRentBal+=Math.max(0,c.balance); tElec+=c.elec; tAdv+=c.advBal; tSec+=c.secBal; tSecHeld+=+t.securityPaid||0;
+    const dues=Math.max(0,c.balance)+c.elec;
+    return `<tr><td><b>${esc(t.room)}</b>${vac?' <span style="color:#999">(vacant)</span>':''}</td><td>${esc(t.name||"—")}</td>`+
+      `<td>${c.months} mo</td><td class="r">${money(t.rent)}</td>`+
+      `<td class="r" style="color:#1a9f63">${money(c.paid)}</td>`+
+      `<td class="r" style="color:${c.balance>0?'#d63a58':'#1a9f63'}">${money(Math.max(0,c.balance))}</td>`+
+      `<td class="r" style="color:${c.elec>0?'#2f6fb0':'#1a9f63'}">${money(c.elec)}</td>`+
+      `<td class="r"><b style="color:${dues>0?'#d63a58':'#1a9f63'}">${money(dues)}</b></td></tr>`;
+  }).join("");
+  const grand=tRentBal+tElec;
+  document.getElementById("reportArea").innerHTML=`<div class="invoice report">
+    <div class="inv-top"><div><div class="inv-brand">${esc(h.name||"KHATA")}<small>portfolio statement · KHATA</small></div></div>
+      <div class="inv-meta">As of <b>${fmtDate(asOf)}</b><br>${ts.length} flats · ${ts.filter(t=>t.status!=="vacant").length} occupied</div></div>
+    <table class="inv-table stmt"><thead><tr><th>Flat</th><th>Tenant</th><th>Since</th><th class="r">Rent</th><th class="r">Paid</th><th class="r">Rent baaki</th><th class="r">Bijli+Motor</th><th class="r">Total baaki</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="stmt-total"><td colspan="3">TOTAL</td><td class="r">${money(tRent)}/mo</td><td class="r" style="color:#1a9f63">${money(tPaid)}</td><td class="r">${money(tRentBal)}</td><td class="r">${money(tElec)}</td><td class="r">${money(grand)}</td></tr></tfoot>
+    </table>
+    <div class="rcpt-dep"><span>Security held: <b>${money(tSecHeld)}</b></span><span>Advance baaki: <b>${money(tAdv)}</b> · Security baaki: <b>${money(tSec)}</b></span></div>
+    <div class="inv-note">Grand total baaki (rent + bijli + motor): <b>${money(grand)}</b> · Generated ${fmtDate(today())} by KHATA</div>
+  </div>`;
+}
 
 /* ---------- init ---------- */
 if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{})); }
-resetHouseForm(); resetTenantForm(); resetMotorForm(); loadAuthStatus();
+resetTenantForm(); resetMotorForm(); loadAuthStatus();
 refresh().catch(()=>{ setConn(false); toast("Server se connect nahi hua — 'npm start' chalayein",true); });
