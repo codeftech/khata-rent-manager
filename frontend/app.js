@@ -146,6 +146,9 @@ function calcTenantMoney(){
 async function saveTenant(){
   const room=val("t_room").trim(), name=val("t_name").trim();
   if(!room && !name) return toast("Flat ya tenant ka naam zaroori hai", true);
+  const id0=val("t_id");
+  if(room){ const dup=DB.tenants.find(x=>x.id!==id0 && x.houseId===theHouseId() && (x.room||"").trim().toLowerCase()===room.toLowerCase());
+    if(dup) return toast('Flat "'+room+'" pehle se hai — dusra number daalein', true); }
   const body={ houseId:theHouseId(), room, name, phone:val("t_phone").trim(),
     fatherName:val("t_father").trim(), aadhaar:val("t_aadhaar").trim(), permAddress:val("t_perm").trim(),
     photo:val("t_photo"), aadhaarPhoto:val("t_aadhaarPhoto"),
@@ -475,19 +478,19 @@ function renderActionCenter(ts){
   const pend=[],done=[];
   occ.forEach(t=>{ const got=DB.payments.filter(p=>p.tenantId===t.id&&p.forMonth===cm).reduce((s,p)=>s+(+p.amount||0),0);
     const need=Math.max(0,(+t.rent||0)-got); const c=computeT(t);
-    if((+t.rent||0)>0 && need>0) pend.push({t,need,di:rentDueInfo(t),elec:c.elec,got});
+    if(need>0 || c.elec>0) pend.push({t,need,di:rentDueInfo(t),elec:c.elec,got});
     else done.push({t,got}); });
   pend.sort((a,b)=> (b.di.over-a.di.over) || (a.di.day-b.di.day));
   const cnt=document.getElementById("acCount"); if(cnt){ cnt.textContent=pend.length; cnt.className="ac-count"+(pend.length?" hot":" cool"); }
   document.getElementById("acEmpty").hidden=pend.length>0;
   box.innerHTML=pend.map(({t,need,di,elec})=>`<div class="ac-card ${di.cls}" data-lvl="${di.cls}">
-      <span class="ac-brackets"></span>
       <div class="ac-c-top"><span class="ac-ava">${initialOf(t)}</span>
         <div class="ac-id"><div class="ac-name">${esc(t.room)}${t.name?' · '+esc(t.name):''}</div>
           <div class="ac-due ${di.cls}"><span class="dc-dot"></span>${di.label}</div></div></div>
-      <div class="ac-amt">${money(need)}<span> rent baaki</span>${elec>0?`<em> · ${money(elec)} bijli</em>`:''}</div>
+      <div class="ac-amt">${need>0?`<span class="ac-rent">${money(need)}</span><small>rent</small>`:''}${elec>0?`<span class="ac-bijli">${money(elec)}</span><small>bijli</small>`:''}</div>
       <div class="ac-actions">
-        <button class="btn sm ok" onclick="acCollect('${t.id}')">Mil gaya ✓</button>
+        ${need>0?`<button class="btn sm ok" onclick="acCollect('${t.id}')">Rent ✓</button>`:''}
+        ${elec>0?`<button class="btn sm cyan" onclick="acClearBijli('${t.id}')">Bijli ✓</button>`:''}
         <button class="btn sm ghost" onclick="waShare('${t.id}')">Remind</button>
         <button class="btn sm ghost" onclick="openFlat('${t.id}')">Open</button>
       </div></div>`).join("");
@@ -495,6 +498,18 @@ function renderActionCenter(ts){
   if(dw){ dw.hidden=done.length===0;
     if(dl) dl.textContent="Mil gaya ("+done.length+")";
     if(dd) dd.innerHTML=done.map(({t,got})=>`<span class="ac-donechip" onclick="openFlat('${t.id}')">${esc(t.room)}${t.name?" · "+esc(t.name.split(' ')[0]):""} <b>${money(got)}</b> ✓</span>`).join(""); }
+}
+async function acClearBijli(tid){
+  const t=DB.tenants.find(x=>x.id===tid); if(!t) return;
+  const bills=DB.ebills.filter(b=>b.tenantId===tid&&!b.paid);
+  const motors=DB.motorbills.filter(m=>m.houseId===t.houseId && !(m.paid&&m.paid[tid]));
+  if(!bills.length&&!motors.length) return toast("Bijli already clear ✓");
+  try{
+    for(const b of bills){ const body={...b,paid:true,paidDate:today()}; delete body.id; await api("PUT","/api/ebills/"+b.id,body); }
+    for(const m of motors){ const paid={...(m.paid||{})},paidDate={...(m.paidDate||{})}; paid[tid]=true; paidDate[tid]=today();
+      const body={...m,paid,paidDate}; delete body.id; await api("PUT","/api/motorbills/"+m.id,body); }
+    await refresh(); toast("Bijli mil gaya ✓ 🎉"); launchConfetti();
+  }catch(e){ toast(e.message,true); }
 }
 async function acCollect(tid){
   const t=DB.tenants.find(x=>x.id===tid); if(!t) return; const cm=curMonth();
@@ -1034,10 +1049,31 @@ async function saveSettings(){ const h=theHouse(); if(!h.id) return;
   try{ await api("PUT","/api/houses/"+h.id, body); await refresh(); toast("Settings saved ✓"); }catch(e){ toast(e.message,true); } }
 
 /* ---------- portfolio report (PDF) ---------- */
-function openReport(){ if(!val("rep_date")) set("rep_date",today()); renderReport(); document.getElementById("reportModal").classList.add("show"); }
+function openReport(){ if(!val("rep_date")) set("rep_date",today()); if(!val("rep_year")) set("rep_year",new Date().getFullYear());
+  renderReport(); document.getElementById("reportModal").classList.add("show"); }
 function closeReport(){ document.getElementById("reportModal").classList.remove("show"); }
 function printReport(){ window.print(); }
+function renderReportYear(){
+  const y=+val("rep_year")||new Date().getFullYear(); const h=theHouse(); const ts=DB.tenants;
+  let rows="",tRent=0,tBij=0,best={m:0,v:-1};
+  for(let mo=1;mo<=12;mo++){ const mm=y+"-"+String(mo).padStart(2,"0");
+    const rent=DB.payments.filter(p=>p.forMonth===mm).reduce((s,p)=>s+(+p.amount||0),0);
+    let bij=DB.ebills.filter(b=>b.month===mm&&b.paid).reduce((s,b)=>s+(+b.amount||0),0);
+    DB.motorbills.filter(m=>m.month===mm).forEach(m=>ts.forEach(t=>{ if(t.houseId===m.houseId && m.paid&&m.paid[t.id]) bij+=+m.shareAmount||0; }));
+    tRent+=rent; tBij+=bij; const tot=rent+bij; if(tot>best.v) best={m:mo,v:tot};
+    rows+=`<tr><td>${MON[mo]} '${String(y).slice(2)}</td><td class="r" style="color:#1a9f63">${money(rent)}</td><td class="r" style="color:#2f6fb0">${money(bij)}</td><td class="r"><b>${money(tot)}</b></td></tr>`;
+  }
+  document.getElementById("reportArea").innerHTML=`<div class="invoice report">
+    <div class="inv-top"><div><div class="inv-brand">${esc(h.name||"KHATA")}<small>yearly summary ${y} · KHATA</small></div></div>
+      <div class="inv-meta">Year <b>${y}</b><br>${ts.length} flats · best: ${best.v>0?MON[best.m]:"—"}</div></div>
+    <table class="inv-table stmt"><thead><tr><th>Month</th><th class="r">Rent collected</th><th class="r">Bijli collected</th><th class="r">Total</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr class="stmt-total"><td>TOTAL ${y}</td><td class="r" style="color:#1a9f63">${money(tRent)}</td><td class="r" style="color:#2f6fb0">${money(tBij)}</td><td class="r">${money(tRent+tBij)}</td></tr></tfoot></table>
+    <div class="inv-note">Saal ${y} ka total collection: <b>${money(tRent+tBij)}</b> · Generated ${fmtDate(today())} by KHATA</div>
+  </div>`;
+}
 function renderReport(){
+  if((val("rep_mode")||"snap")==="year") return renderReportYear();
   const asOf=val("rep_date")||today(); const h=theHouse();
   const ts=DB.tenants.slice().sort((a,b)=>String(a.room).localeCompare(String(b.room),undefined,{numeric:true}));
   let tRent=0,tPaid=0,tRentBal=0,tElec=0,tAdv=0,tSec=0,tSecHeld=0;

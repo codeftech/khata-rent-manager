@@ -296,7 +296,9 @@
     <div class="box glass invwrap" style="max-width:820px">
       <div class="inv-controls no-print">
         <button class="close" onclick="closeReport()" aria-label="Close">×</button>
+        <span class="inline-f">Type <select id="rep_mode" onchange="renderReport()"><option value="snap">Snapshot</option><option value="year">Yearly</option></select></span>
         <span class="inline-f">As of <input type="date" id="rep_date" onchange="renderReport()"></span>
+        <span class="inline-f">Year <input type="number" id="rep_year" min="2020" max="2100" style="width:88px" onchange="renderReport()"></span>
         <button class="btn gold" onclick="printReport()">Print / Save PDF</button>
       </div>
       <div id="reportArea"></div>
