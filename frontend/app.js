@@ -554,16 +554,25 @@ function setChartMonths(n){ chartMonths=n;
   const sub=document.getElementById("chartSub"); if(sub) sub.textContent="last "+n+" months";
   const ts=scopeTenants(); renderChart(new Set(ts.map(t=>t.id))); }
 function renderChart(ids){
-  const n=chartMonths; const months=[]; const d=new Date();
+  const el=document.getElementById("chart"); if(!el) return;
+  const n=6, months=[], d=new Date();
   for(let i=n-1;i>=0;i--){ const m=new Date(d.getFullYear(),d.getMonth()-i,1); months.push(m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0")); }
   const vals=months.map(m=>DB.payments.filter(p=>ids.has(p.tenantId)&&p.forMonth===m).reduce((s,p)=>s+(+p.amount||0),0));
+  const total=vals.reduce((a,b)=>a+b,0);
+  if(total<=0){ el.innerHTML='<div class="chart-empty">🌱 Abhi koi rent payment nahi<br><span>Pehla rent aate hi yahan 6-mahine ka trend dikhega</span></div>'; return; }
   const max=Math.max(1,...vals);
-  document.getElementById("chart").innerHTML=months.map((m,i)=>{
-    const h=Math.round(vals[i]/max*100);
-    const lbl = vals[i]>=1000 ? "₹"+(vals[i]/1000).toFixed(vals[i]%1000?1:0)+"k" : (vals[i]?money(vals[i]):"");
-    return `<div class="col"><div class="bar" style="height:0" data-h="${h}"><span>${lbl}</span></div><div class="cl">${MON[+m.split("-")[1]]}</div></div>`;
-  }).join("");
-  requestAnimationFrame(()=>document.querySelectorAll("#chart .bar").forEach(b=>b.style.height=b.dataset.h+"%"));
+  const W=600,H=200,P=30,iw=W-P*2,ih=H-P-26;
+  const X=i=> P + i*(iw/(n-1)), Y=v=> P + ih - (v/max)*ih;
+  const pts=vals.map((v,i)=>[X(i),Y(v)]);
+  const line=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const area=line+` L ${X(n-1).toFixed(1)} ${(P+ih).toFixed(1)} L ${X(0).toFixed(1)} ${(P+ih).toFixed(1)} Z`;
+  const grid=[0,.5,1].map(f=>{ const gy=(P+ih-f*ih).toFixed(1); return `<line x1="${P}" y1="${gy}" x2="${W-P}" y2="${gy}" class="ch-grid"/>`; }).join("");
+  const dots=pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="4.5" class="ch-dot"/>`).join("");
+  const xlab=months.map((m,i)=>`<text x="${X(i).toFixed(1)}" y="${H-6}" class="ch-x">${MON[+m.split("-")[1]]}</text>`).join("");
+  const vlab=vals.map((v,i)=> v>0?`<text x="${X(i).toFixed(1)}" y="${(Y(v)-11).toFixed(1)}" class="ch-v">${v>=1000?"₹"+(v/1000).toFixed(v%1000?1:0)+"k":"₹"+v}</text>`:"").join("");
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="areachart">
+    <defs><linearGradient id="chg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--emerald)" stop-opacity=".34"/><stop offset="1" stop-color="var(--emerald)" stop-opacity="0"/></linearGradient></defs>
+    ${grid}<path d="${area}" fill="url(#chg)" class="ch-area"/><path d="${line}" class="ch-line"/>${dots}${vlab}${xlab}</svg>`;
 }
 function renderHouseMini(){
   if(!DB.houses.length){ document.getElementById("houseMini").innerHTML='<span class="soft">Koi ghar nahi.</span>'; return; }
