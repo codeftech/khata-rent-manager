@@ -1064,6 +1064,41 @@ input:focus,select:focus,.ms-in:focus{border-color:var(--ice)!important;box-shad
 .af-txt b{font-weight:800}
 .af-time{font-size:11px;color:var(--ink-dim);font-weight:600;margin-top:1px}
 
+/* ===== enhanced clean KPI cards + polish ===== */
+.bt-kpi{padding:18px 20px!important;gap:0;justify-content:flex-start}
+.bt-kpi::before{display:none!important}
+.kpi-top{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+.kpi-badge{width:40px;height:40px;flex:none;border-radius:12px;display:grid;place-items:center;font-size:20px;line-height:1}
+.bt-kpi.c-coral .kpi-badge{background:rgba(240,69,90,.13)}
+.bt-kpi.c-green .kpi-badge{background:rgba(18,183,106,.14)}
+.bt-kpi.c-blue .kpi-badge{background:rgba(79,107,246,.13)}
+.bt-kpi.c-purple .kpi-badge{background:rgba(169,139,255,.16)}
+.kpi-lbl{font-size:12.5px;font-weight:600;color:var(--ink-soft);letter-spacing:0}
+.kpi-num{font-family:var(--f-d);font-weight:800;font-size:27px;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.15;letter-spacing:-.01em}
+.kpi-num .val.rose{color:var(--rose)}
+.kpi-of{font-size:14px;color:var(--ink-dim);font-weight:600}
+.kpi-sub{font-size:12px;color:var(--ink-soft);font-weight:500;margin-top:9px}
+.bt-kpi .sc-bar{height:7px;border-radius:7px;margin-top:11px}
+
+/* card headers a bit cleaner */
+.bt .card-head h2{font-size:15.5px;font-weight:800;letter-spacing:-.01em}
+.bt .card-head p{font-size:12px}
+.card-head p b{color:var(--ink)}
+
+/* smooth transitions everywhere on cards */
+.bt,.card,.stat,.pcard,.hcard,.ac-card,.qbtn,.mf-row,.af-row,.btn{transition:.2s cubic-bezier(.22,1,.36,1)}
+
+/* mini-flats / rows cleaner */
+.mf-row{border:1px solid transparent!important}
+.mf-row:hover{background:var(--bg-1)!important;border-color:var(--border)!important}
+
+/* ring stroke matches emerald, thicker inner label */
+.ring-in b{font-size:30px}
+
+/* quick buttons: label + icon refined */
+.qbtn{gap:10px;font-weight:600}
+.qbtn:hover{border-color:var(--ice)!important;color:var(--ice)}
+
 /* print — whichever modal is open */
 @media print{
   body *{visibility:hidden!important}

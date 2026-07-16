@@ -415,7 +415,8 @@ function renderDash(){
   // KPI bento tiles
   const kpi=(id,cls,ic,lbl,numHtml,sub,bar)=>{ const el=document.getElementById(id); if(!el) return;
     el.className="bt bt-kpi soft-card "+cls;
-    el.innerHTML=`<div class="kpi-ic">${ic}</div><div class="kpi-lbl">${lbl}</div><div class="kpi-num">${numHtml}</div>`+
+    el.innerHTML=`<div class="kpi-top"><span class="kpi-badge">${ic}</span><span class="kpi-lbl">${lbl}</span></div>`+
+      `<div class="kpi-num">${numHtml}</div>`+
       (bar!=null?`<div class="sc-bar"><i style="width:${bar}%"></i></div>`:"")+`<div class="kpi-sub">${sub}</div>`; };
   kpi("btBaaki","c-coral","⏳","Total baaki",`<span class="val ${grand>0?'rose':''}" data-to="${grand}" data-fmt="money">₹0</span>`,`rent ${money(rentBal)} · bijli ${money(elecPend)}`,null);
   kpi("btColl","c-green","💰","Is mahine aaya",`<span class="val" data-to="${collThis}" data-fmt="money">₹0</span> <span class="kpi-of">/ ${money(expThis)}</span>`,`${pct}% · ${monthLabel(cm)}${trend}`,pct);
@@ -440,11 +441,15 @@ function renderDash(){
   renderMiniFlats(ts);
   renderActivity();
 }
+function timeAgo(d){ if(!d) return ""; const p=d.split("-"); if(p.length<3) return monthLabel(d);
+  const then=midnight(new Date(+p[0],+p[1]-1,+p[2])), now=midnight(new Date()); const days=Math.round((now-then)/86400000);
+  if(days<=0) return "aaj"; if(days===1) return "kal"; if(days<30) return days+" din pehle";
+  const mo=Math.floor(days/30); return mo+(mo===1?" mahina":" mahine")+" pehle"; }
 function renderActivity(){
   const box=document.getElementById("activity"); if(!box) return;
   const nm=id=>{ const t=DB.tenants.find(x=>x.id===id); return t?(t.room+(t.name?" · "+t.name.split(' ')[0]:"")):"—"; };
   const ev=[];
-  DB.payments.forEach(p=>ev.push({d:p.date||"",when:fmtDate(p.date),ic:"₹",cls:"green",txt:`<b>${esc(nm(p.tenantId))}</b> ne ${money(p.amount)} rent diya`}));
+  DB.payments.forEach(p=>ev.push({d:p.date||"",when:timeAgo(p.date),ic:"₹",cls:"green",txt:`<b>${esc(nm(p.tenantId))}</b> ne ${money(p.amount)} rent diya`}));
   DB.ebills.forEach(b=>ev.push({d:(b.paidDate||b.month||"")+"~",when:monthLabel(b.month),ic:"⚡",cls:"cyan",txt:`<b>${esc(nm(b.tenantId))}</b> — bijli ${money(b.amount)}${b.paid?" (paid)":""}`}));
   DB.motorbills.forEach(m=>ev.push({d:(m.month||"")+"~",when:monthLabel(m.month),ic:"⚙",cls:"blue",txt:`Motor reading · ${money(m.shareAmount)}/flat`}));
   ev.sort((a,b)=>(b.d||"").localeCompare(a.d||""));
