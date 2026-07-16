@@ -805,6 +805,23 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* clickable feedback */
 .stat.clickable:active{box-shadow:var(--nm-inset)}
 
+/* ===== de-cyber (cleaner premium) + top layout fill ===== */
+.gauge::before{display:none!important}
+.hudbar::after{display:none!important}
+.hud-card::before,.hud-card::after{display:none!important}
+.hudbar{background:var(--nm-bg)}
+
+.top-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:14px;align-items:stretch}
+.top-grid>.hero,.top-grid>.action-center{margin-bottom:0}
+.top-grid>.action-center{display:flex;flex-direction:column;max-height:400px;overflow:auto}
+.top-grid>.action-center .ac-grid{grid-template-columns:1fr}
+.top-grid>.hero{width:auto}
+@media(max-width:1024px){
+  .top-grid{grid-template-columns:1fr}
+  .top-grid>.action-center{max-height:none}
+  .top-grid>.action-center .ac-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+}
+
 /* print — whichever modal is open */
 @media print{
   body *{visibility:hidden!important}

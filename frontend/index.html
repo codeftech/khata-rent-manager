@@ -22,7 +22,6 @@
     <span class="blob b3"></span><span class="blob b4"></span><span class="blob b5"></span>
     <span class="grain"></span>
   </div>
-  <div class="hud" aria-hidden="true"></div>
   <canvas id="confetti" class="confetti"></canvas>
 
   <div class="shell">
@@ -51,7 +50,7 @@
     <!-- ===================== OVERVIEW ===================== -->
     <section id="tab-dash" class="page">
       <div class="hudbar glass" id="hudbar">
-        <div class="hb-item"><span class="hb-k">System</span><span class="hb-v ok" id="hbSys"><span class="hb-dot"></span>Nominal</span></div>
+        <div class="hb-item"><span class="hb-k">Status</span><span class="hb-v ok" id="hbSys"><span class="hb-dot"></span>All clear</span></div>
         <div class="hb-sep"></div>
         <div class="hb-item"><span class="hb-k">Property</span><span class="hb-v" id="hbProp">—</span></div>
         <div class="hb-sep"></div>
@@ -62,7 +61,8 @@
         <div class="hb-item"><span class="hb-k">Local time</span><span class="hb-v mono" id="hbClock">--:--:--</span></div>
       </div>
 
-      <div class="hero glass compact hud-card">
+      <div class="top-grid">
+      <div class="hero glass compact">
         <div class="hero-l">
           <div class="hero-eyebrow" id="heroHouse">Portfolio</div>
           <div class="hero-metric"><span class="hero-cur">₹</span><span class="val" id="heroDue" data-to="0" data-fmt="plain">0</span></div>
@@ -78,7 +78,7 @@
         </div>
       </div>
 
-      <div class="card glass action-center hud-card" id="actionCenter">
+      <div class="card glass action-center" id="actionCenter">
         <div class="ac-head">
           <div class="ac-title"><span class="ac-live"></span>Action needed <span class="ac-month" id="acMonth"></span></div>
           <div class="ac-count" id="acCount">0</div>
@@ -86,6 +86,7 @@
         <div class="ac-grid" id="actionNeeded"></div>
         <div class="ac-empty" id="acEmpty" hidden>Is mahine sabne de diya — sab clear ✦</div>
         <div class="ac-done-wrap" id="acDoneWrap" hidden><div class="ac-done-lbl" id="acDoneLbl"></div><div class="ac-done" id="actionDone"></div></div>
+      </div>
       </div>
 
       <div class="stats" id="dashStats"></div>
