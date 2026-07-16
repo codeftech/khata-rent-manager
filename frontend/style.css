@@ -894,6 +894,41 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 @media(max-width:820px){.two-col{grid-template-columns:1fr}}
 
+/* ============================================================
+   MORE ENHANCED — soft pastel atmosphere + richer cards
+   ============================================================ */
+/* friendly floating pastel orbs for depth (over flat neumorphic bg) */
+.bg .blob{display:block!important;filter:blur(80px);mix-blend-mode:normal;opacity:.5}
+.bg .b1{background:radial-gradient(circle,#ffd4e6,transparent 70%)!important}
+.bg .b2{background:radial-gradient(circle,#cfe1ff,transparent 70%)!important}
+.bg .b3{background:radial-gradient(circle,#d3f5e6,transparent 70%)!important}
+.bg .b4{background:radial-gradient(circle,#ffe9c9,transparent 70%)!important}
+.bg .b5{background:radial-gradient(circle,#e9dcff,transparent 70%)!important}
+:root[data-theme="dark"] .bg .blob,html:not([data-theme]) .bg .blob{opacity:.14}
+
+/* summary cards: soft tint + shine sweep + stagger */
+.sc{background:var(--nm-bg)}
+.sc.c-green{background:linear-gradient(135deg,rgba(43,182,115,.08),var(--nm-bg) 62%)}
+.sc.c-coral{background:linear-gradient(135deg,rgba(255,107,138,.08),var(--nm-bg) 62%)}
+.sc.c-blue{background:linear-gradient(135deg,rgba(107,139,255,.08),var(--nm-bg) 62%)}
+.sc.c-purple{background:linear-gradient(135deg,rgba(169,139,255,.08),var(--nm-bg) 62%)}
+.sc::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.45) 50%,transparent 60%);transform:translateX(-130%);transition:transform .75s ease}
+.sc:hover::after{transform:translateX(130%)}
+.sc:nth-child(1){animation-delay:.03s}.sc:nth-child(2){animation-delay:.09s}.sc:nth-child(3){animation-delay:.15s}.sc:nth-child(4){animation-delay:.21s}
+.sc-ic{transition:.3s}.sc:hover .sc-ic{transform:scale(1.08) rotate(-4deg)}
+.sc-trend{font-family:var(--f-num);font-size:10px;font-weight:800;padding:1px 6px;border-radius:20px}
+.sc-trend.up{color:var(--emerald);background:rgba(43,182,115,.14)}
+.sc-trend.down{color:var(--rose);background:rgba(255,107,138,.14)}
+
+/* section headings a touch bigger + friendly */
+.soft-card .card-head h2{font-size:17.5px}
+/* action + mini rows: gentle hover pop */
+.ac-card:hover .ac-ava{transform:scale(1.06)}
+.ac-ava{transition:.25s}
+.mf-row{border:1px solid transparent}
+.mf-row:hover{border-color:var(--line-bright)}
+.mf-dot{animation:pulse 2.4s ease-in-out infinite}
+
 /* print — whichever modal is open */
 @media print{
   body *{visibility:hidden!important}

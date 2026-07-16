@@ -405,11 +405,17 @@ function renderDash(){
   ts.forEach(t=>{ if(t.status==="vacant")return; expThis+=+t.rent||0;
     collThis+=DB.payments.filter(p=>p.tenantId===t.id&&p.forMonth===cm).reduce((s,p)=>s+(+p.amount||0),0); });
   const pct=expThis>0?Math.min(100,Math.round(collThis/expThis*100)):0;
+  // month-over-month trend
+  const now=new Date(), pmD=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const lm=pmD.getFullYear()+"-"+String(pmD.getMonth()+1).padStart(2,"0");
+  const lastColl=DB.payments.filter(p=>ids.has(p.tenantId)&&p.forMonth===lm).reduce((s,p)=>s+(+p.amount||0),0);
+  let trend=""; if(lastColl>0){ const tp=Math.round((collThis-lastColl)/lastColl*100);
+    trend=` <span class="sc-trend ${tp>=0?'up':'down'}">${tp>=0?'▲':'▼'} ${Math.abs(tp)}%</span>`; }
 
   // 4 big summary cards
   const sc=document.getElementById("sumcards");
   if(sc){ sc.innerHTML=
-    `<div class="sc c-green"><div class="sc-ic">💰</div><div class="sc-body"><div class="sc-lbl">Is mahine aaya</div><div class="sc-num"><span class="val" data-to="${collThis}" data-fmt="money">₹0</span> <span class="sc-of">/ ${money(expThis)}</span></div><div class="sc-bar"><i style="width:${pct}%"></i></div><div class="sc-sub">${pct}% collected · ${monthLabel(cm)}</div></div></div>`+
+    `<div class="sc c-green"><div class="sc-ic">💰</div><div class="sc-body"><div class="sc-lbl">Is mahine aaya</div><div class="sc-num"><span class="val" data-to="${collThis}" data-fmt="money">₹0</span> <span class="sc-of">/ ${money(expThis)}</span></div><div class="sc-bar"><i style="width:${pct}%"></i></div><div class="sc-sub">${pct}% · ${monthLabel(cm)}${trend}</div></div></div>`+
     `<div class="sc c-coral"><div class="sc-ic">⏳</div><div class="sc-body"><div class="sc-lbl">Total baaki</div><div class="sc-num rose"><span class="val" data-to="${grand}" data-fmt="money">₹0</span></div><div class="sc-sub">rent ${money(rentBal)} · bijli ${money(elecPend)}</div></div></div>`+
     `<div class="sc c-blue"><div class="sc-ic">🏠</div><div class="sc-body"><div class="sc-lbl">Flats</div><div class="sc-num"><span class="val" data-to="${occ}" data-fmt="plain">0</span> <span class="sc-of">/ ${ts.length}</span></div><div class="sc-sub">${occ} bhare · ${vac} khaali</div></div></div>`+
     `<div class="sc c-purple"><div class="sc-ic">🔐</div><div class="sc-body"><div class="sc-lbl">Security jama</div><div class="sc-num"><span class="val" data-to="${secHeld}" data-fmt="money">₹0</span></div><div class="sc-sub">rent/mo ${money(totMonthly)}</div></div></div>`;
