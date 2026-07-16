@@ -438,6 +438,19 @@ function renderDash(){
   renderActionCenter(ts);
   renderChart(ids);
   renderMiniFlats(ts);
+  renderActivity();
+}
+function renderActivity(){
+  const box=document.getElementById("activity"); if(!box) return;
+  const nm=id=>{ const t=DB.tenants.find(x=>x.id===id); return t?(t.room+(t.name?" · "+t.name.split(' ')[0]:"")):"—"; };
+  const ev=[];
+  DB.payments.forEach(p=>ev.push({d:p.date||"",when:fmtDate(p.date),ic:"₹",cls:"green",txt:`<b>${esc(nm(p.tenantId))}</b> ne ${money(p.amount)} rent diya`}));
+  DB.ebills.forEach(b=>ev.push({d:(b.paidDate||b.month||"")+"~",when:monthLabel(b.month),ic:"⚡",cls:"cyan",txt:`<b>${esc(nm(b.tenantId))}</b> — bijli ${money(b.amount)}${b.paid?" (paid)":""}`}));
+  DB.motorbills.forEach(m=>ev.push({d:(m.month||"")+"~",when:monthLabel(m.month),ic:"⚙",cls:"blue",txt:`Motor reading · ${money(m.shareAmount)}/flat`}));
+  ev.sort((a,b)=>(b.d||"").localeCompare(a.d||""));
+  box.innerHTML = ev.length ? ev.slice(0,9).map(e=>
+    `<div class="af-row"><span class="af-ic ${e.cls}">${e.ic}</span><div class="af-body"><div class="af-txt">${e.txt}</div><div class="af-time">${e.when}</div></div></div>`).join("")
+    : '<div class="empty">Abhi koi activity nahi — pehla rent/bijli daalo.</div>';
 }
 function renderMiniFlats(ts){
   const box=document.getElementById("miniFlats"); if(!box) return;

@@ -990,6 +990,80 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .quick-grid{grid-template-columns:repeat(2,1fr)}
 }
 
+/* ============================================================
+   CLEAN SAAS skin (Flick-MailMerge style) — flat white cards
+   ============================================================ */
+:root,:root[data-theme="light"]{
+  --card:#ffffff; --bg-0:#f5f7fa; --bg-1:#eef1f6; --bg-2:#e7ebf2; --border:#e6e9f1;
+  --nm-bg:#ffffff; --nm-hi:#ffffff; --nm-lo:#eef1f6; --panel:#ffffff; --panel-strong:#ffffff;
+  --ink:#111927; --ink-soft:#5b6a82; --ink-dim:#98a2b3;
+  --shadow:0 1px 2px rgba(16,24,40,.06), 0 6px 16px rgba(16,24,40,.06);
+  --shadow-sm:0 1px 2px rgba(16,24,40,.07);
+  --nm-inset:inset 0 1px 3px rgba(16,24,40,.06);
+  --ice:#4f6bf6; --ice-glow:rgba(79,107,246,.16);
+  --gold:#d9982c; --gold-hi:#b47415; --gold-glow:rgba(217,152,44,.16);
+  --cyan:#0ba5b7; --emerald:#12b76a; --emerald-2:#039855; --rose:#f0455a; --rose-2:#d92d20; --amber:#f79009;
+}
+:root[data-theme="dark"]{
+  --card:#1a2233; --bg-0:#0e1420; --bg-1:#141c2c; --bg-2:#1a2233; --border:#28324a;
+  --nm-bg:#1a2233; --nm-hi:#1a2233; --nm-lo:#0e1420; --panel:#1a2233; --panel-strong:#1a2233;
+  --ink:#e8edf6; --ink-soft:#94a1bd; --ink-dim:#5f6c86;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 20px rgba(0,0,0,.35);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --nm-inset:inset 0 1px 3px rgba(0,0,0,.4);
+  --ice:#6b8bff;--ice-glow:rgba(107,139,255,.22);--emerald:#3ccb8b;--rose:#ff6b7d;--gold:#e6b45a;--gold-hi:#f0c877;--cyan:#3bc0d4;--amber:#f7b955;
+}
+body{background:var(--bg-0)}
+.bg{background:var(--bg-0)}.bg .blob{opacity:.14}
+:root[data-theme="dark"] .bg .blob{opacity:.1}
+/* flat cards + surfaces */
+.glass,.card,.soft-card,.bt,.stat,.sc,.pcard,.hcard,.dk,.modal .box,.drawer-panel,.sidebar,.hudbar,.motor-item,
+.ac-card,.duetile,.odrow,.mchip,.chips button,.pill-total,.seg,.mf-row,.qbtn,.af-row{
+  background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:var(--shadow-sm)}
+.card,.soft-card,.bt,.modal .box,.drawer-panel,.sidebar{box-shadow:var(--shadow)}
+.glass::before,.stat::before,.stat::after,.hud-card::before,.hud-card::after,.gauge::before{display:none!important}
+.card:hover,.bt:hover,.stat:hover,.pcard:hover,.hcard:hover{box-shadow:0 4px 18px rgba(16,24,40,.10)}
+/* inputs flat */
+input,select,.ms-in{background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:none!important}
+input:focus,select:focus,.ms-in:focus{border-color:var(--ice)!important;box-shadow:0 0 0 3px var(--ice-glow)!important}
+/* icon holders / pills → soft neutral */
+.sc-ic,.ac-ava,.ac-count,.ac-month,.dh-date,.kpi-ic,.hm-ring i,.pc-avatar,.dr-avatar,.pc-flat{box-shadow:none!important}
+.ring-in,.donut::after{background:var(--card)!important;box-shadow:none!important;border:1px solid var(--border)}
+.sc-bar,.pbar{background:var(--bg-1)!important;box-shadow:none!important;border:none!important}
+/* buttons → solid accent */
+.btn{background:var(--ice)!important;color:#fff!important;box-shadow:var(--shadow-sm)!important;border:none!important}
+.btn::after{display:none!important}
+.btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.btn.gold{background:var(--gold)!important;color:#fff!important}
+.btn.ok{background:var(--emerald)!important;color:#fff!important}
+.btn.cyan{background:var(--cyan)!important;color:#fff!important}
+.btn.danger{background:var(--rose)!important;color:#fff!important}
+.btn.ghost{background:var(--card)!important;color:var(--ink)!important;border:1px solid var(--border)!important}
+/* sidebar clean */
+.brand .logo{background:var(--ice)!important;color:#fff!important;box-shadow:var(--shadow-sm)!important}
+.brand .logo::after{display:none}
+.brand .title{background:none!important;-webkit-text-fill-color:var(--ink)!important;color:var(--ink)!important}
+.sidenav button.active{background:var(--ice)!important;color:#fff!important;box-shadow:none!important}
+.sidenav button.active svg{opacity:1}
+.themebtn{background:var(--card)!important;border:1px solid var(--border)!important;box-shadow:var(--shadow-sm)!important}
+/* toast dark */
+.toast{background:var(--ink)!important;color:#fff!important;box-shadow:var(--shadow)!important}
+.toast.err{background:var(--rose)!important}
+/* chart line color → accent for cohesion (keep emerald for money though) */
+
+/* ===== activity feed ===== */
+.activity-feed{display:flex;flex-direction:column;gap:2px;max-height:280px;overflow-y:auto}
+.af-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:transparent!important;border:none!important}
+.af-row:hover{background:var(--bg-1)!important}
+.af-ic{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;font-family:var(--f-num);font-weight:800;font-size:14px}
+.af-ic.green{background:rgba(18,183,106,.12);color:var(--emerald)}
+.af-ic.cyan{background:rgba(11,165,183,.12);color:var(--cyan)}
+.af-ic.blue{background:rgba(79,107,246,.12);color:var(--ice)}
+.af-body{min-width:0;flex:1}
+.af-txt{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.af-txt b{font-weight:800}
+.af-time{font-size:11px;color:var(--ink-dim);font-weight:600;margin-top:1px}
+
 /* print — whichever modal is open */
 @media print{
   body *{visibility:hidden!important}
