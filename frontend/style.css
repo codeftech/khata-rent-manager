@@ -486,6 +486,24 @@ tbody tr:hover td{background:rgba(200,215,240,.04)}
 .mchip.paid .mc-dot{background:var(--emerald);box-shadow:0 0 8px var(--emerald)}
 .mchip:hover{transform:translateY(-1px);border-color:var(--ice)}
 
+/* monthly sheet */
+.ms-controls{display:flex;gap:10px;flex-wrap:wrap}
+.ms-controls select,.ms-controls input{width:auto}
+.ms-summary{font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:14px;padding:11px 15px;background:rgba(200,215,240,.04);border:1px solid var(--line);border-radius:12px}
+.ms-summary span:first-child{font-family:var(--f-d);font-weight:800;color:#fff;margin-right:4px}
+.ms-summary b{color:var(--ink)}
+.mssheet{min-width:760px}
+.mssheet th{white-space:nowrap}
+.mssheet td{padding:8px 8px;vertical-align:middle}
+.ms-tn{font-size:10.5px;color:var(--ink-soft);font-weight:500;margin-top:2px}
+.ms-in{width:90px;text-align:right;padding:9px 10px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.ms-in.sm{width:72px;padding:9px 8px}
+.ms-in:focus{background:rgba(143,208,255,.1)}
+.ms-full{padding:8px 11px;color:var(--emerald);border-color:rgba(84,227,161,.4)!important}
+.ms-full:hover{background:rgba(84,227,161,.12)}
+.ms-motor{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--cyan);cursor:pointer;white-space:nowrap}
+.ms-motor input{width:auto;accent-color:var(--emerald);cursor:pointer}
+
 /* modals */
 .modal{position:fixed;inset:0;z-index:110;display:none;align-items:flex-start;justify-content:center;padding:44px 16px;overflow:auto;background:rgba(3,4,7,.7);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
 .modal.show{display:flex}

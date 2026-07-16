@@ -36,6 +36,7 @@
       <nav class="sidenav" id="tabs">
         <button data-tab="dash" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Overview</span></button>
         <button data-tab="flats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-5h5v5"/></svg><span>Flats</span></button>
+        <button data-tab="monthly"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h3M14 13h3M7 17h3M14 17h3"/></svg><span>Monthly</span></button>
         <button data-tab="props"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="8" height="18" rx="1.2"/><rect x="13" y="8" width="8" height="13" rx="1.2"/><path d="M6 7h2M6 11h2M6 15h2"/></svg><span>Properties</span></button>
         <button data-tab="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg><span>Data</span></button>
       </nav>
@@ -154,6 +155,30 @@
       <div class="section-title"><span>Flat dossiers</span><span class="st-line"></span></div>
       <div class="profilegrid" id="profileCards"></div>
       <div class="empty" id="roomsEmpty">Abhi koi flat nahi. Upar form se add karein.</div>
+    </section>
+
+    <!-- ===================== MONTHLY SHEET ===================== -->
+    <section id="tab-monthly" class="page" hidden>
+      <div class="card glass">
+        <div class="card-head monthhead"><div><h2>Monthly sheet</h2><p>poore ghar ka rent + bijli ek saath — likho ya click karo, phir <b>Save all</b></p></div>
+          <div class="ms-controls">
+            <select id="ms_house" onchange="renderMonthlySheet()"></select>
+            <input type="month" id="ms_month" onchange="renderMonthlySheet()">
+          </div>
+        </div>
+        <div class="ms-summary" id="msSummary"></div>
+        <div class="tblwrap"><table class="mssheet" id="msTable">
+          <thead><tr>
+            <th>Flat / Tenant</th>
+            <th class="r">Rent ₹</th><th></th>
+            <th class="r">Prev</th><th class="r">Curr</th><th class="r">Rate</th><th class="r">Bijli ₹</th>
+            <th class="r">Motor</th><th>Status</th><th></th>
+          </tr></thead>
+          <tbody id="msBody"></tbody>
+        </table></div>
+        <div class="empty" id="msEmpty" hidden>Is ghar me koi occupied flat nahi. Flats tab se add karein.</div>
+        <div class="actions"><button class="btn ok" onclick="saveAllMonth()">💾 Save all</button><button class="btn ghost" onclick="renderMonthlySheet()">Reset</button></div>
+      </div>
     </section>
 
     <!-- ===================== PROPERTIES ===================== -->

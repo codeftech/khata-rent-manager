@@ -108,7 +108,7 @@ document.getElementById("tabs").addEventListener("click", e=>{
   const b=e.target.closest("button"); if(!b) return;
   document.querySelectorAll("#tabs button").forEach(x=>x.classList.remove("active"));
   b.classList.add("active");
-  ["dash","flats","props","data"].forEach(t=>{ document.getElementById("tab-"+t).hidden=(t!==b.dataset.tab); });
+  ["dash","flats","monthly","props","data"].forEach(t=>{ document.getElementById("tab-"+t).hidden=(t!==b.dataset.tab); });
 });
 function gotoTab(n){ document.querySelector('#tabs button[data-tab="'+n+'"]').click(); }
 function scrollTop(){ window.scrollTo({top:0,behavior:"smooth"}); }
@@ -293,8 +293,85 @@ function renderMotor(){
   }).join("");
 }
 
+/* ---------- MONTHLY SHEET (excel-style fast entry) ---------- */
+function renderMonthlyHouseSelect(){ const s=document.getElementById("ms_house"); if(!s) return; const k=s.value;
+  s.innerHTML = DB.houses.length ? DB.houses.map(h=>`<option value="${h.id}">${esc(h.name)}</option>`).join("")
+    : '<option value="">— pehle ghar add karein —</option>';
+  s.value=k || (DB.houses[0]?DB.houses[0].id:""); }
+
+function msLastBill(tid, month){ // most recent bill before selected month
+  return DB.ebills.filter(b=>b.tenantId===tid && (b.month||"")<month).sort((a,b)=>(b.month||"").localeCompare(a.month||""))[0]; }
+
+function renderMonthlySheet(){
+  const body=document.getElementById("msBody"); if(!body) return;
+  const hid=val("ms_house"); if(!val("ms_month")) set("ms_month",curMonth());
+  const month=val("ms_month")||curMonth();
+  const flats=houseOccupied(hid).slice().sort((a,b)=>String(a.room).localeCompare(String(b.room),undefined,{numeric:true}));
+  document.getElementById("msEmpty").hidden=flats.length>0;
+  const motor=DB.motorbills.find(m=>m.houseId===hid && m.month===month);
+  let expTot=0, gotTot=0, bijliTot=0;
+  body.innerHTML=flats.map(t=>{
+    const pays=DB.payments.filter(p=>p.tenantId===t.id&&p.forMonth===month);
+    const got=pays.reduce((s,p)=>s+(+p.amount||0),0);
+    const rentExp=+t.rent||0; expTot+=rentExp; gotTot+=got;
+    const bill=DB.ebills.find(b=>b.tenantId===t.id&&b.month===month);
+    const last=msLastBill(t.id,month);
+    const prev=bill?bill.prev:(last?last.curr:0);
+    const rate=bill?bill.rate:(last?last.rate:0);
+    const curr=bill?bill.curr:"";
+    const bAmt=bill?bill.amount:0; bijliTot+=bAmt;
+    const mShare=motor?motor.shareAmount:0; const mPaid=motor&&motor.paid&&motor.paid[t.id];
+    const rentDone=rentExp>0&&got>=rentExp;
+    const st=(rentDone?'<span class="tag ok">Rent ✓</span>':(got>0?'<span class="tag due">Part</span>':'<span class="tag due">Pending</span>'))+(bill?' <span class="tag ok">Bijli ✓</span>':'');
+    return `<tr>
+      <td><b>${esc(t.room)}</b>${t.name?'<div class="ms-tn">'+esc(t.name)+'</div>':''}</td>
+      <td class="r"><input class="ms-in" id="msr_${t.id}_rent" type="number" min="0" value="${got||''}" placeholder="${rentExp}"></td>
+      <td><button class="btn sm ghost ms-full" onclick="msFull('${t.id}')" title="Full rent ${money(rentExp)}">✓</button></td>
+      <td class="r"><input class="ms-in sm" id="msr_${t.id}_prev" type="number" value="${prev||''}" oninput="msCalc('${t.id}')"></td>
+      <td class="r"><input class="ms-in sm" id="msr_${t.id}_curr" type="number" value="${curr}" placeholder="reading" oninput="msCalc('${t.id}')"></td>
+      <td class="r"><input class="ms-in sm" id="msr_${t.id}_rate" type="number" step="0.01" value="${rate||''}" placeholder="rate" oninput="msCalc('${t.id}')"></td>
+      <td class="r"><input class="ms-in sm" id="msr_${t.id}_amt" type="number" value="${bAmt||''}" placeholder="auto"></td>
+      <td class="r">${motor?`<label class="ms-motor"><input type="checkbox" ${mPaid?'checked':''} onchange="toggleMotorPaid('${motor.id}','${t.id}')">${money(mShare)}</label>`:'<span class="soft">—</span>'}</td>
+      <td>${st}</td>
+      <td class="r"><button class="btn sm ok" onclick="saveMonthRow('${t.id}')">Save</button></td>
+    </tr>`;
+  }).join("");
+  const sum=document.getElementById("msSummary");
+  if(sum) sum.innerHTML = flats.length ? `<span>${monthLabel(month)}</span> · Rent: <b style="color:var(--emerald)">${money(gotTot)}</b> / ${money(expTot)} · baaki <b style="color:${expTot-gotTot>0?'var(--rose)':'var(--emerald)'}">${money(Math.max(0,expTot-gotTot))}</b> · Bijli billed <b style="color:var(--cyan)">${money(bijliTot)}</b>${motor?` · Motor <b style="color:var(--cyan)">${money(motor.shareAmount)}/flat</b>`:' · <span class="soft">motor reading nahi</span>'}` : "";
+}
+function msCalc(tid){ const prev=+val("msr_"+tid+"_prev")||0, curr=+val("msr_"+tid+"_curr")||0, rate=+val("msr_"+tid+"_rate")||0;
+  const amt=Math.round(Math.max(0,curr-prev)*rate); if(rate>0&&curr>prev) set("msr_"+tid+"_amt",amt); }
+function msFull(tid){ const t=DB.tenants.find(x=>x.id===tid); if(t) set("msr_"+tid+"_rent",+t.rent||0); }
+
+async function commitMonthRow(tid, month){
+  const t=DB.tenants.find(x=>x.id===tid); if(!t) return;
+  // RENT — treat sheet value as "received this month"
+  const rentVal=+val("msr_"+tid+"_rent")||0;
+  const pays=DB.payments.filter(p=>p.tenantId===tid&&p.forMonth===month);
+  const curSum=pays.reduce((s,p)=>s+(+p.amount||0),0);
+  if(rentVal!==curSum){
+    for(const p of pays) await api("DELETE","/api/payments/"+p.id);
+    if(rentVal>0) await api("POST","/api/payments",{tenantId:tid,amount:rentVal,date:today(),forMonth:month,mode:"Cash",note:"monthly sheet"});
+  }
+  // BIJLI — own meter
+  const prev=+val("msr_"+tid+"_prev")||0, curr=+val("msr_"+tid+"_curr")||0, rate=+val("msr_"+tid+"_rate")||0;
+  let amt=+val("msr_"+tid+"_amt")||0; const units=Math.max(0,curr-prev); if(!amt&&rate>0) amt=Math.round(units*rate);
+  const bill=DB.ebills.find(b=>b.tenantId===tid&&b.month===month);
+  if(curr>=prev && (amt>0)){
+    const body={tenantId:tid,month,prev,curr,units,rate,amount:Math.round(amt),paid:bill?bill.paid:false,paidDate:bill?bill.paidDate:"",note:bill?bill.note:""};
+    if(bill) await api("PUT","/api/ebills/"+bill.id,body); else await api("POST","/api/ebills",body);
+  } else if(bill && amt<=0 && curr<=prev){ /* leave existing bill as-is */ }
+}
+async function saveMonthRow(tid){ const month=val("ms_month")||curMonth();
+  try{ await commitMonthRow(tid,month); await refresh(); toast("Saved ✓"); }catch(e){ toast(e.message,true); } }
+async function saveAllMonth(){ const hid=val("ms_house"), month=val("ms_month")||curMonth();
+  const flats=houseOccupied(hid); if(!flats.length) return toast("Koi flat nahi",true);
+  try{ for(const t of flats) await commitMonthRow(t.id,month); await refresh(); toast("Poore ghar ka "+monthLabel(month)+" save ✓ 🎉"); launchConfetti(); }
+  catch(e){ toast(e.message,true); }
+}
+
 /* ---------- render orchestration ---------- */
-function renderAll(){ renderChips(); renderDash(); renderHouses(); renderProfiles(); renderSelects(); renderMotorHouseSelect(); renderMotor(); }
+function renderAll(){ renderChips(); renderDash(); renderHouses(); renderProfiles(); renderSelects(); renderMotorHouseSelect(); renderMotor(); renderMonthlyHouseSelect(); renderMonthlySheet(); }
 
 function renderChips(){
   let h='<button class="'+(selHouse===""?"active":"")+'" onclick="pickHouse(\'\')">Sab ghar</button>';
