@@ -929,6 +929,67 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .mf-row:hover{border-color:var(--line-bright)}
 .mf-dot{animation:pulse 2.4s ease-in-out infinite}
 
+/* ============================================================
+   BENTO dashboard — packed tiles that fill the space
+   ============================================================ */
+.bento{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;align-items:stretch}
+.bt{padding:18px 20px;border-radius:24px;display:flex;flex-direction:column;box-shadow:var(--shadow);position:relative;overflow:hidden;animation:rise .5s cubic-bezier(.22,1,.36,1) both}
+.bt:nth-child(1){animation-delay:.02s}.bt:nth-child(2){animation-delay:.06s}.bt:nth-child(3){animation-delay:.1s}.bt:nth-child(4){animation-delay:.14s}
+.bt:nth-child(5){animation-delay:.18s}.bt:nth-child(6){animation-delay:.22s}.bt:nth-child(7){animation-delay:.26s}.bt:nth-child(8){animation-delay:.3s}.bt:nth-child(9){animation-delay:.34s}
+.bt-kpi{grid-column:span 1;min-height:150px;justify-content:center;gap:2px;padding-left:26px}
+.bt-1{grid-column:span 1}
+.bt-2{grid-column:span 2;min-height:300px;overflow:auto}
+.bt-3{grid-column:span 3;min-height:250px}
+.bt-4{grid-column:span 4}
+.bt-ring{min-height:250px}
+
+/* kpi tiles */
+.kpi-ic{font-size:26px;line-height:1;margin-bottom:4px}
+.kpi-lbl{font-size:11.5px;font-weight:700;color:var(--ink-soft);letter-spacing:.02em}
+.kpi-num{font-family:var(--f-d);font-weight:800;font-size:28px;color:var(--ink);margin-top:4px;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi-num .val.rose{color:var(--rose)}
+.kpi-of{font-size:14px;color:var(--ink-soft);font-weight:600}
+.kpi-sub{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-top:8px}
+.bt-kpi .sc-bar{margin-top:9px}
+.bt-kpi::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:5px;border-radius:5px}
+.bt-kpi.c-coral::before{background:var(--rose)}.bt-kpi.c-green::before{background:var(--emerald)}.bt-kpi.c-blue::before{background:var(--ice)}.bt-kpi.c-purple::before{background:#a98bff}
+.bt-kpi.c-coral{background:linear-gradient(135deg,rgba(255,107,138,.07),var(--nm-bg) 60%)}
+.bt-kpi.c-green{background:linear-gradient(135deg,rgba(43,182,115,.08),var(--nm-bg) 60%)}
+.bt-kpi.c-blue{background:linear-gradient(135deg,rgba(107,139,255,.08),var(--nm-bg) 60%)}
+.bt-kpi.c-purple{background:linear-gradient(135deg,rgba(169,139,255,.08),var(--nm-bg) 60%)}
+.bt-kpi::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.4) 50%,transparent 60%);transform:translateX(-130%);transition:transform .75s ease}
+.bt-kpi:hover::after{transform:translateX(130%)}
+.bt-kpi:hover{transform:translateY(-4px)}
+.bt-kpi:hover .kpi-ic{transform:scale(1.1) rotate(-4deg);transition:.25s}
+
+/* collection ring */
+.ringwrap{flex:1;display:grid;place-items:center;padding:6px}
+.ring{width:158px;height:158px;border-radius:50%;display:grid;place-items:center;position:relative;
+  background:conic-gradient(var(--emerald) calc(var(--p,0)*1%), var(--nm-lo) 0);box-shadow:var(--shadow)}
+.ring-in{width:118px;height:118px;border-radius:50%;background:var(--nm-bg);display:grid;place-items:center;text-align:center;box-shadow:var(--nm-inset)}
+.ring-in b{font-family:var(--f-d);font-weight:800;font-size:28px;color:var(--emerald);display:block;line-height:1}
+.ring-in span{font-size:10px;font-weight:600;color:var(--ink-soft);margin-top:5px;display:block;font-variant-numeric:tabular-nums;line-height:1.4}
+
+/* quick actions */
+.bt-quick{padding:16px}
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;flex:1;align-content:center}
+.qbtn{display:flex;flex-direction:column;align-items:center;gap:9px;padding:20px 10px;border-radius:18px;border:none;cursor:pointer;
+  background:var(--nm-bg);box-shadow:var(--shadow-sm);color:var(--ink);font-weight:700;font-size:13px;transition:.22s cubic-bezier(.22,1,.36,1)}
+.qbtn b{font-size:26px;font-weight:400;line-height:1}
+.qbtn:hover{transform:translateY(-3px);color:var(--ice)}
+.qbtn:active{box-shadow:var(--nm-inset);transform:translateY(0)}
+
+@media(max-width:1000px){
+  .bento{grid-template-columns:repeat(2,1fr)}
+  .bt-2,.bt-3,.bt-4,.bt-ring{grid-column:span 2}
+  .bt-kpi,.bt-1{grid-column:span 1}
+}
+@media(max-width:600px){
+  .bento{grid-template-columns:1fr}
+  .bt-kpi,.bt-1,.bt-2,.bt-3,.bt-4,.bt-ring{grid-column:span 1;min-height:auto}
+  .quick-grid{grid-template-columns:repeat(2,1fr)}
+}
+
 /* print — whichever modal is open */
 @media print{
   body *{visibility:hidden!important}

@@ -412,14 +412,28 @@ function renderDash(){
   let trend=""; if(lastColl>0){ const tp=Math.round((collThis-lastColl)/lastColl*100);
     trend=` <span class="sc-trend ${tp>=0?'up':'down'}">${tp>=0?'▲':'▼'} ${Math.abs(tp)}%</span>`; }
 
-  // 4 big summary cards
-  const sc=document.getElementById("sumcards");
-  if(sc){ sc.innerHTML=
-    `<div class="sc c-green"><div class="sc-ic">💰</div><div class="sc-body"><div class="sc-lbl">Is mahine aaya</div><div class="sc-num"><span class="val" data-to="${collThis}" data-fmt="money">₹0</span> <span class="sc-of">/ ${money(expThis)}</span></div><div class="sc-bar"><i style="width:${pct}%"></i></div><div class="sc-sub">${pct}% · ${monthLabel(cm)}${trend}</div></div></div>`+
-    `<div class="sc c-coral"><div class="sc-ic">⏳</div><div class="sc-body"><div class="sc-lbl">Total baaki</div><div class="sc-num rose"><span class="val" data-to="${grand}" data-fmt="money">₹0</span></div><div class="sc-sub">rent ${money(rentBal)} · bijli ${money(elecPend)}</div></div></div>`+
-    `<div class="sc c-blue"><div class="sc-ic">🏠</div><div class="sc-body"><div class="sc-lbl">Flats</div><div class="sc-num"><span class="val" data-to="${occ}" data-fmt="plain">0</span> <span class="sc-of">/ ${ts.length}</span></div><div class="sc-sub">${occ} bhare · ${vac} khaali</div></div></div>`+
-    `<div class="sc c-purple"><div class="sc-ic">🔐</div><div class="sc-body"><div class="sc-lbl">Security jama</div><div class="sc-num"><span class="val" data-to="${secHeld}" data-fmt="money">₹0</span></div><div class="sc-sub">rent/mo ${money(totMonthly)}</div></div></div>`;
-    animateCounts(sc); }
+  // KPI bento tiles
+  const kpi=(id,cls,ic,lbl,numHtml,sub,bar)=>{ const el=document.getElementById(id); if(!el) return;
+    el.className="bt bt-kpi soft-card "+cls;
+    el.innerHTML=`<div class="kpi-ic">${ic}</div><div class="kpi-lbl">${lbl}</div><div class="kpi-num">${numHtml}</div>`+
+      (bar!=null?`<div class="sc-bar"><i style="width:${bar}%"></i></div>`:"")+`<div class="kpi-sub">${sub}</div>`; };
+  kpi("btBaaki","c-coral","⏳","Total baaki",`<span class="val ${grand>0?'rose':''}" data-to="${grand}" data-fmt="money">₹0</span>`,`rent ${money(rentBal)} · bijli ${money(elecPend)}`,null);
+  kpi("btColl","c-green","💰","Is mahine aaya",`<span class="val" data-to="${collThis}" data-fmt="money">₹0</span> <span class="kpi-of">/ ${money(expThis)}</span>`,`${pct}% · ${monthLabel(cm)}${trend}`,pct);
+  kpi("btFlats","c-blue","🏠","Flats",`<span class="val" data-to="${occ}" data-fmt="plain">0</span> <span class="kpi-of">/ ${ts.length}</span>`,`${occ} bhare · ${vac} khaali`,null);
+  kpi("btSec","c-purple","🔐","Security jama",`<span class="val" data-to="${secHeld}" data-fmt="money">₹0</span>`,`rent/mo ${money(totMonthly)}`,null);
+  animateCounts(document.querySelector(".bento"));
+
+  // collection ring
+  const rw=document.getElementById("ringWrap");
+  if(rw) rw.innerHTML=`<div class="ring" style="--p:${pct}"><div class="ring-in"><b>${pct}%</b><span>${money(collThis)}<br>aaya</span></div></div>`;
+
+  // quick actions
+  const q=document.getElementById("btQuick");
+  if(q) q.innerHTML=`<div class="quick-grid">`+
+    `<button class="qbtn" onclick="gotoTab('flats')"><b>➕</b>Flat add</button>`+
+    `<button class="qbtn" onclick="gotoTab('monthly')"><b>📋</b>Monthly sheet</button>`+
+    `<button class="qbtn" onclick="gotoTab('motor')"><b>⚙️</b>Motor</button>`+
+    `<button class="qbtn" onclick="openReport()"><b>📄</b>Report PDF</button></div>`;
 
   renderActionCenter(ts);
   renderChart(ids);

@@ -54,27 +54,38 @@
         <div class="dh-date" id="dhDate">—</div>
       </div>
 
-      <div class="sumcards" id="sumcards"></div>
+      <div class="bento">
+        <div class="bt bt-kpi soft-card" id="btBaaki"></div>
+        <div class="bt bt-kpi soft-card" id="btColl"></div>
+        <div class="bt bt-kpi soft-card" id="btFlats"></div>
+        <div class="bt bt-kpi soft-card" id="btSec"></div>
 
-      <div class="card soft-card">
-        <div class="card-head ac-head2">
-          <div><h2>💸 Kaun baaki hai?</h2><p>jinse rent ya bijli lena hai — aa jaye to <b>Mil gaya</b> daba do</p></div>
-          <div class="ac-count-box"><span class="ac-count" id="acCount">0</span><span class="ac-count-lbl">pending<br><span class="ac-month" id="acMonth"></span></span></div>
+        <div class="bt bt-2 soft-card">
+          <div class="card-head ac-head2">
+            <div><h2>💸 Kaun baaki hai?</h2><p>jinse lena hai — aa jaye to <b>Mil gaya</b> daba do</p></div>
+            <div class="ac-count-box"><span class="ac-count" id="acCount">0</span><span class="ac-count-lbl">pending<br><span class="ac-month" id="acMonth"></span></span></div>
+          </div>
+          <div class="ac-grid" id="actionNeeded"></div>
+          <div class="ac-empty" id="acEmpty" hidden>Is mahine sabne de diya — sab clear 🎉</div>
+          <div class="ac-done-wrap" id="acDoneWrap" hidden><div class="ac-done-lbl" id="acDoneLbl"></div><div class="ac-done" id="actionDone"></div></div>
         </div>
-        <div class="ac-grid" id="actionNeeded"></div>
-        <div class="ac-empty" id="acEmpty" hidden>Is mahine sabne de diya — sab clear 🎉</div>
-        <div class="ac-done-wrap" id="acDoneWrap" hidden><div class="ac-done-lbl" id="acDoneLbl"></div><div class="ac-done" id="actionDone"></div></div>
-      </div>
 
-      <div class="two-col">
-        <div class="card soft-card">
-          <div class="card-head"><h2>📈 Rent collection</h2><p>pichle 6 mahine</p></div>
-          <div class="chart" id="chart"></div>
-        </div>
-        <div class="card soft-card">
+        <div class="bt bt-2 soft-card">
           <div class="card-head"><h2>🏠 Har flat</h2><p>tap → poori detail</p></div>
           <div class="mini-flats" id="miniFlats"></div>
         </div>
+
+        <div class="bt bt-3 soft-card">
+          <div class="card-head"><h2>📈 Rent collection</h2><p>pichle 6 mahine</p></div>
+          <div class="chart" id="chart"></div>
+        </div>
+
+        <div class="bt bt-1 bt-ring soft-card">
+          <div class="card-head"><h2>🎯 Collection</h2><p>is mahine</p></div>
+          <div class="ringwrap" id="ringWrap"></div>
+        </div>
+
+        <div class="bt bt-4 bt-quick soft-card" id="btQuick"></div>
       </div>
     </section>
 
