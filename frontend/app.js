@@ -466,6 +466,8 @@ function renderDash(){
   renderChart(ids);
   renderHouseMini();
   renderDueTracker(ts);
+  renderHudBar(ts.length,occ,pct,grand);
+  renderHeroSpark(ids);
   renderDuesDonut([{v:rentBal,c:"var(--rose)",l:"Rent"},{v:meterPend,c:"var(--cyan)",l:"Bijli"},{v:motorPend,c:"var(--ice)",l:"Motor"}]);
   renderFlatCompare(ts);
   renderActionCenter(ts);
@@ -556,6 +558,32 @@ function renderDueTracker(ts){
       ${dues>0?`<button class="btn sm ok" onclick="event.stopPropagation();waShare('${t.id}')">Remind</button>`:'<span class="dt-ok">✓</span>'}
     </div>`;
   }).join("");
+}
+function renderHudBar(total,occ,pct,grand){
+  const set2=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  set2("hbProp", theHouse().name||"—");
+  set2("hbOcc", total?occ+"/"+total+" · "+(total?Math.round(occ/total*100):0)+"%":"—");
+  set2("hbColl", pct+"%");
+  const sys=document.getElementById("hbSys");
+  if(sys){ const lvl=grand<=0?"ok":(pct>=60?"warn":"due");
+    sys.className="hb-v "+lvl; sys.innerHTML='<span class="hb-dot"></span>'+(grand<=0?"All clear":(lvl==="warn"?"Dues open":"Action needed")); }
+}
+let _clock;
+function startClock(){ if(_clock) return;
+  const tick=()=>{ const el=document.getElementById("hbClock"); if(!el) return; const d=new Date();
+    el.textContent=[d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,"0")).join(":"); };
+  tick(); _clock=setInterval(tick,1000); }
+function renderHeroSpark(ids){
+  const box=document.getElementById("heroSpark"); if(!box) return;
+  const months=[]; const d=new Date();
+  for(let i=5;i>=0;i--){ const m=new Date(d.getFullYear(),d.getMonth()-i,1); months.push(m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0")); }
+  const vals=months.map(m=>DB.payments.filter(p=>ids.has(p.tenantId)&&p.forMonth===m).reduce((s,p)=>s+(+p.amount||0),0));
+  const max=Math.max(1,...vals);
+  box.innerHTML='<span class="hs-lbl">6-MO</span>'+months.map((m,i)=>{
+    const h=Math.max(8,Math.round(vals[i]/max*100));
+    return `<i class="hs-bar" style="height:0" data-h="${h}" title="${MON[+m.split('-')[1]]}: ${money(vals[i])}"></i>`;
+  }).join("");
+  requestAnimationFrame(()=>box.querySelectorAll(".hs-bar").forEach(b=>b.style.height=b.dataset.h+"%"));
 }
 function setGauge(pct){
   const g=document.getElementById("collGauge"); const C=2*Math.PI*52;
@@ -1102,5 +1130,5 @@ function renderReport(){
 
 /* ---------- init ---------- */
 if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{})); }
-resetTenantForm(); resetMotorForm(); loadAuthStatus();
+resetTenantForm(); resetMotorForm(); loadAuthStatus(); startClock();
 refresh().catch(()=>{ setConn(false); toast("Server se connect nahi hua — 'npm start' chalayein",true); });

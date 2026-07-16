@@ -762,6 +762,49 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ac-donechip:hover{transform:translateY(-1px)}
 .ac-donechip b{font-family:var(--f-num);color:var(--ink)}
 
+/* ===== HUD status strip ===== */
+.hudbar{display:flex;align-items:center;gap:14px;padding:10px 18px;border-radius:14px;margin-bottom:14px;flex-wrap:wrap;position:relative;overflow:hidden}
+.hudbar::after{content:"";position:absolute;left:-30%;top:0;width:30%;height:2px;background:linear-gradient(90deg,transparent,var(--ice),transparent);animation:hbscan 4.5s linear infinite}
+@keyframes hbscan{to{left:130%}}
+.hb-item{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hb-k{font-size:8.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+.hb-v{font-family:var(--f-num);font-weight:700;font-size:12.5px;color:var(--ink);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.hb-v.mono{color:var(--ice)}
+.hb-v.ok{color:var(--emerald)} .hb-v.warn{color:var(--amber)} .hb-v.due{color:var(--rose)}
+.hb-dot{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;animation:pulse 1.8s ease-in-out infinite}
+.hb-sep{width:1px;height:22px;background:var(--line-bright);flex:none}
+.hb-spacer{flex:1}
+@media(max-width:640px){.hb-sep{display:none}.hudbar{gap:12px}}
+
+/* ===== hero sparkline ===== */
+.hero-spark{display:flex;align-items:flex-end;gap:3px;height:34px;margin-top:14px}
+.hs-lbl{font-family:var(--f-num);font-size:8.5px;font-weight:800;letter-spacing:.1em;color:var(--ink-dim);align-self:center;margin-right:6px}
+.hs-bar{width:9px;border-radius:3px 3px 1px 1px;background:linear-gradient(180deg,var(--gold-hi),var(--gold-2));box-shadow:0 0 8px var(--gold-glow);transition:height 1s cubic-bezier(.22,1,.36,1);min-height:8%}
+
+/* ===== animation polish ===== */
+.dashgrid>.card{animation:rise .55s cubic-bezier(.22,1,.36,1) both}
+.dashgrid>.card:nth-child(1){animation-delay:.03s}.dashgrid>.card:nth-child(2){animation-delay:.07s}
+.dashgrid>.card:nth-child(3){animation-delay:.11s}.dashgrid>.card:nth-child(4){animation-delay:.15s}
+.dashgrid>.card:nth-child(5){animation-delay:.19s}.dashgrid>.card:nth-child(6){animation-delay:.23s}
+.dashgrid>.card:nth-child(7){animation-delay:.27s}
+/* gauge scan ring */
+.gauge::before{content:"";position:absolute;inset:-6px;border-radius:50%;pointer-events:none;
+  background:conic-gradient(from 0deg, transparent 0deg, var(--ice-glow) 40deg, transparent 80deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 calc(100% - 9px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 calc(100% - 9px));
+  opacity:.6;animation:sweep 6s linear infinite}
+.gauge-c b{text-shadow:0 0 16px var(--ice-glow)}
+/* donut draw-in + hover */
+.donut{animation:pop .6s cubic-bezier(.22,1,.36,1) both}
+.donut:hover{filter:drop-shadow(0 0 12px var(--ice-glow))}
+/* action-center entrance */
+.action-center{animation:rise .5s cubic-bezier(.22,1,.36,1) both}
+/* stat value glow on hover */
+.stat:hover .val{text-shadow:0 0 18px rgba(130,186,255,.25)}
+.hk:hover b{color:var(--ice)}
+/* clickable feedback */
+.stat.clickable:active{box-shadow:var(--nm-inset)}
+
 /* print — whichever modal is open */
 @media print{
   body *{visibility:hidden!important}
