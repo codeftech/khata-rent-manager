@@ -79,7 +79,7 @@ function applyTheme(t){ document.documentElement.dataset.theme=t;
   const b=document.getElementById("themeBtn"); if(b) b.textContent = t==="light" ? "☀" : "☾"; }
 function toggleTheme(){ const cur=document.documentElement.dataset.theme==="light"?"dark":"light";
   try{ localStorage.setItem("khata-theme",cur); }catch(e){} applyTheme(cur); }
-(function initTheme(){ let t="dark"; try{ t=localStorage.getItem("khata-theme")||"dark"; }catch(e){} applyTheme(t); })();
+(function initTheme(){ let t="light"; try{ t=localStorage.getItem("khata-theme")||"light"; }catch(e){} applyTheme(t); })();
 
 /* ---------- photos (data-URL) ---------- */
 function pickPhoto(e, hiddenId, prevId){
@@ -384,93 +384,52 @@ function renderBrand(){ const el=document.getElementById("heroHouse"); if(el) el
 
 /* ---------- dashboard ---------- */
 function renderDash(){
-  const ts=scopeTenants();
-  let totMonthly=0,totDue=0,totPaid=0,secHeld=0,advDueSum=0,secDueSum=0,occ=0,vac=0;
+  const ts=DB.tenants; const cm=curMonth();
+  // friendly header
+  const g=document.getElementById("dhGreet"); if(g){ const hr=new Date().getHours();
+    g.textContent = hr<12?"Suprabhat ☀️":(hr<17?"Namaste ✨":"Shubh sandhya 🌙"); }
+  const pr=document.getElementById("dhProp"); if(pr) pr.textContent=theHouse().name||"—";
+  const dt=document.getElementById("dhDate"); if(dt){ const d=new Date(); dt.textContent=d.getDate()+" "+MON[d.getMonth()+1]+" "+d.getFullYear(); }
+
+  // totals
+  let occ=0,vac=0,totMonthly=0,totDue=0,totPaid=0,secHeld=0;
   ts.forEach(t=>{ if(t.status==="vacant")vac++; else{occ++;totMonthly+=+t.rent||0;} secHeld+=+t.securityPaid||0;
-    const c=computeT(t); totDue+=c.due; totPaid+=c.paid; advDueSum+=c.advBal; secDueSum+=c.secBal; });
+    const c=computeT(t); totDue+=c.due; totPaid+=c.paid; });
   const ids=new Set(ts.map(t=>t.id));
-  let elecColl=0,meterPend=0,motorPend=0;
-  DB.ebills.forEach(b=>{ if(!ids.has(b.tenantId)) return; if(b.paid) elecColl+=+b.amount||0; else meterPend+=+b.amount||0; });
-  DB.motorbills.forEach(m=>{ ts.forEach(t=>{ if(t.houseId!==m.houseId||t.status==="vacant")return;
-    const p=m.paid&&m.paid[t.id]; if(p) elecColl+=+m.shareAmount||0; else motorPend+=+m.shareAmount||0; }); });
-  const elecPend=meterPend+motorPend;
-  const rentBal=Math.max(0,totDue-totPaid), grand=rentBal+elecPend;
-
-  // hero
-  document.getElementById("heroHouse").textContent = theHouse().name || "Portfolio";
-  const hd=document.getElementById("heroDue"); hd.dataset.to=grand; hd.dataset.fmt="plain";
-  document.getElementById("heroSub").textContent = grand>0 ? "total baaki · rent + bijli + motor" : "sab clear — koi baaki nahi ✦";
-
-  document.getElementById("dashStats").innerHTML=
-    statN("Flats",ts.length,"int","",occ+" occ · "+vac+" vacant","flats","flats") +
-    statN("Monthly rent",totMonthly,"money","gold","expected / month","flats","rent") +
-    statN("Rent collected",totPaid,"money","ok","ab tak total","flats","ok") +
-    statN("Rent baaki",rentBal,"money",rentBal>0?"due":"ok","","flats","due") +
-    statN("Bijli + Motor baaki",elecPend,"money",elecPend>0?"cyan":"ok",money(elecColl)+" mila","props","bolt") +
-    statN("Grand total baaki",grand,"money",grand>0?"due":"ok","rent + bijli + motor","flats","grand") +
-    statN("Security held",secHeld,"money","gold","jama hai","flats","shield") +
-    statN("Advance+Security baaki",advDueSum+secDueSum,"money",(advDueSum+secDueSum)>0?"warn":"ok",money(advDueSum)+" adv · "+money(secDueSum)+" sec","flats","inbox");
-  animateCounts(document.getElementById("dashStats"));
-  animateCounts(document.querySelector(".hero"));
-
-  // this-month collection gauge
-  const cm=curMonth(); let expThis=0,collThis=0;
+  let meterPend=0,motorPend=0;
+  DB.ebills.forEach(b=>{ if(ids.has(b.tenantId)&&!b.paid) meterPend+=+b.amount||0; });
+  DB.motorbills.forEach(m=>ts.forEach(t=>{ if(t.houseId===m.houseId&&t.status!=="vacant"&&!(m.paid&&m.paid[t.id])) motorPend+=+m.shareAmount||0; }));
+  const rentBal=Math.max(0,totDue-totPaid), elecPend=meterPend+motorPend, grand=rentBal+elecPend;
+  // this month
+  let expThis=0,collThis=0;
   ts.forEach(t=>{ if(t.status==="vacant")return; expThis+=+t.rent||0;
     collThis+=DB.payments.filter(p=>p.tenantId===t.id&&p.forMonth===cm).reduce((s,p)=>s+(+p.amount||0),0); });
   const pct=expThis>0?Math.min(100,Math.round(collThis/expThis*100)):0;
-  setGauge(pct);
 
-  // hero KPIs + month-over-month trend
-  const now2=new Date(), pmD=new Date(now2.getFullYear(),now2.getMonth()-1,1);
-  const lm=pmD.getFullYear()+"-"+String(pmD.getMonth()+1).padStart(2,"0");
-  const lastColl=DB.payments.filter(p=>ids.has(p.tenantId)&&p.forMonth===lm).reduce((s,p)=>s+(+p.amount||0),0);
-  let trend="";
-  if(lastColl>0){ const tp=Math.round((collThis-lastColl)/lastColl*100);
-    trend=` <i class="trend ${tp>=0?'up':'down'}">${tp>=0?'▲':'▼'} ${Math.abs(tp)}%</i>`; }
-  const hk=document.getElementById("heroKpis");
-  if(hk){ hk.innerHTML=
-    `<div class="hk"><b>${occ}/${ts.length}</b><span>occupied</span></div>`+
-    `<div class="hk"><b>${money(collThis)}</b><span>collected ${monthLabel(cm)}${trend}</span></div>`+
-    `<div class="hk"><b>${pct}%</b><span>collection rate</span></div>`; }
+  // 4 big summary cards
+  const sc=document.getElementById("sumcards");
+  if(sc){ sc.innerHTML=
+    `<div class="sc c-green"><div class="sc-ic">💰</div><div class="sc-body"><div class="sc-lbl">Is mahine aaya</div><div class="sc-num"><span class="val" data-to="${collThis}" data-fmt="money">₹0</span> <span class="sc-of">/ ${money(expThis)}</span></div><div class="sc-bar"><i style="width:${pct}%"></i></div><div class="sc-sub">${pct}% collected · ${monthLabel(cm)}</div></div></div>`+
+    `<div class="sc c-coral"><div class="sc-ic">⏳</div><div class="sc-body"><div class="sc-lbl">Total baaki</div><div class="sc-num rose"><span class="val" data-to="${grand}" data-fmt="money">₹0</span></div><div class="sc-sub">rent ${money(rentBal)} · bijli ${money(elecPend)}</div></div></div>`+
+    `<div class="sc c-blue"><div class="sc-ic">🏠</div><div class="sc-body"><div class="sc-lbl">Flats</div><div class="sc-num"><span class="val" data-to="${occ}" data-fmt="plain">0</span> <span class="sc-of">/ ${ts.length}</span></div><div class="sc-sub">${occ} bhare · ${vac} khaali</div></div></div>`+
+    `<div class="sc c-purple"><div class="sc-ic">🔐</div><div class="sc-body"><div class="sc-lbl">Security jama</div><div class="sc-num"><span class="val" data-to="${secHeld}" data-fmt="money">₹0</span></div><div class="sc-sub">rent/mo ${money(totMonthly)}</div></div></div>`;
+    animateCounts(sc); }
 
-  // selectable month view
-  if(!val("dashMonth")) set("dashMonth",cm);
-  const dm=val("dashMonth")||cm;
-  let mExp=0,mColl=0,mPc=0,mUc=0,mBijli=0;
-  ts.forEach(t=>{ if(t.status==="vacant")return; mExp+=+t.rent||0;
-    const got=DB.payments.filter(p=>p.tenantId===t.id&&p.forMonth===dm).reduce((s,p)=>s+(+p.amount||0),0);
-    mColl+=got; if((+t.rent||0)>0&&got>=(+t.rent||0))mPc++; else mUc++; });
-  DB.ebills.forEach(b=>{ if(ids.has(b.tenantId)&&b.month===dm) mBijli+=+b.amount||0; });
-  DB.motorbills.filter(m=>m.month===dm).forEach(m=>ts.forEach(t=>{ if(t.houseId===m.houseId&&t.status!=="vacant") mBijli+=+m.shareAmount||0; }));
-  const mv=document.getElementById("monthView");
-  if(mv){ mv.innerHTML=
-    statN("Rent expected",mExp,"money","") +
-    statN("Rent collected",mColl,"money","ok") +
-    statN("Rent pending",Math.max(0,mExp-mColl),"money",(mExp-mColl)>0?"warn":"ok") +
-    statN("Bijli + Motor billed",mBijli,"money","cyan") +
-    statN("Flats paid",mPc,"int","ok",mPc+" paid · "+mUc+" pending");
-    animateCounts(mv); }
-
-  // overdue — compact list
-  let items="",any=false;
-  ts.slice().sort((a,b)=>(computeT(b).balance+computeT(b).elec)-(computeT(a).balance+computeT(a).elec)).forEach(t=>{
-    const c=computeT(t), tot=Math.max(0,c.balance)+c.elec; if(tot<=0) return; any=true;
-    items+=`<div class="odrow" onclick="openFlat('${t.id}')">`+
-      `<div class="od-l"><div class="od-name">${esc(t.room)}${t.name?" · "+esc(t.name.split(' ')[0]):""}</div><div class="od-sub">${esc(hName(t.houseId))} · ${money(Math.max(0,c.balance))} rent · ${money(c.elec)} bijli</div></div>`+
-      `<div class="od-amt">${money(tot)}</div>`+
-      `<button class="btn sm ok" onclick="event.stopPropagation();waShare('${t.id}')">Remind</button></div>`;
-  });
-  document.getElementById("overdueList").innerHTML=items;
-  document.getElementById("overdueEmpty").hidden=any;
-
-  renderChart(ids);
-  renderHouseMini();
-  renderDueTracker(ts);
-  renderHudBar(ts.length,occ,pct,grand);
-  renderHeroSpark(ids);
-  renderDuesDonut([{v:rentBal,c:"var(--rose)",l:"Rent"},{v:meterPend,c:"var(--cyan)",l:"Bijli"},{v:motorPend,c:"var(--ice)",l:"Motor"}]);
-  renderFlatCompare(ts);
   renderActionCenter(ts);
+  renderChart(ids);
+  renderMiniFlats(ts);
+}
+function renderMiniFlats(ts){
+  const box=document.getElementById("miniFlats"); if(!box) return;
+  const list=ts.slice().sort((a,b)=>String(a.room).localeCompare(String(b.room),undefined,{numeric:true}));
+  box.innerHTML = list.map(t=>{ const c=computeT(t); const vac=t.status==="vacant"; const dues=Math.max(0,c.balance)+c.elec;
+    const dot=vac?"var(--ink-dim)":(dues>0?"var(--rose)":"var(--emerald)");
+    return `<div class="mf-row" onclick="openFlat('${t.id}')">
+      <span class="mf-dot" style="background:${dot}"></span>
+      <span class="mf-name">${esc(t.room)}${t.name?" · "+esc(t.name):""}</span>
+      <span class="mf-amt" style="color:${dues>0?'var(--rose)':'var(--ink-soft)'}">${vac?'khaali':(dues>0?money(dues)+' baaki':'clear ✓')}</span>
+      <span class="chev">›</span></div>`;
+  }).join("") || '<div class="empty">Koi flat nahi — Flats tab se add karein.</div>';
 }
 /* auto "action needed" for the current month — who to collect from vs who paid */
 function renderActionCenter(ts){

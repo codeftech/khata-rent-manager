@@ -822,6 +822,62 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   .top-grid>.action-center .ac-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 }
 
+/* ============================================================
+   SOFT & FRIENDLY dashboard rebuild ("pookie" premium)
+   ============================================================ */
+/* warmer, softer light theme (default) */
+:root[data-theme="light"]{
+  --nm-bg:#eef0f8; --nm-hi:#ffffff; --nm-lo:#cdd2e2;
+  --panel:#eef0f8;--panel-strong:#eef0f8;--bg-0:#eef0f8;--bg-1:#e7eaf4;--bg-2:#e1e5f1;
+  --ink:#33324a;--ink-soft:#7b7a97;--ink-dim:#a8a7c0;
+  --ice:#6b8bff;--ice-glow:rgba(107,139,255,.25);--gold:#e0a63a;--gold-hi:#c98a1e;--gold-glow:rgba(224,166,58,.2);
+  --cyan:#33b6c9;--emerald:#2bb673;--emerald-2:#1c9f68;--rose:#ff6b8a;--rose-2:#e24a6b;--amber:#e0902f;
+}
+.soft-card{border-radius:24px}
+.card-head h2{font-size:17px}
+
+/* dashboard header */
+.dash-hi{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding:2px}
+.dh-greet{font-family:var(--f-d);font-weight:800;font-size:24px;color:var(--ink);letter-spacing:-.01em}
+.dh-prop{font-size:13.5px;color:var(--ink-soft);font-weight:600;margin-top:3px}
+.dh-date{font-family:var(--f);font-weight:700;font-size:13px;color:var(--ink-soft);padding:10px 16px;border-radius:16px;box-shadow:var(--shadow-sm);white-space:nowrap}
+
+/* summary cards */
+.sumcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(224px,1fr));gap:15px;margin-bottom:18px}
+.sc{display:flex;gap:15px;align-items:center;padding:20px;border-radius:24px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:.28s cubic-bezier(.22,1,.36,1);animation:rise .5s ease both}
+.sc:hover{transform:translateY(-5px)}
+.sc::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:5px;border-radius:5px}
+.sc.c-green::before{background:var(--emerald)}.sc.c-coral::before{background:var(--rose)}.sc.c-blue::before{background:var(--ice)}.sc.c-purple::before{background:#a98bff}
+.sc-ic{width:54px;height:54px;flex:none;border-radius:18px;display:grid;place-items:center;font-size:26px;box-shadow:var(--nm-inset)}
+.sc-body{min-width:0;flex:1}
+.sc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.03em;color:var(--ink-soft)}
+.sc-num{font-family:var(--f-d);font-weight:800;font-size:25px;color:var(--ink);margin-top:3px;font-variant-numeric:tabular-nums;line-height:1.1}
+.sc-num.rose{color:var(--rose)}
+.sc-of{font-size:13px;color:var(--ink-soft);font-weight:600}
+.sc-bar{height:8px;border-radius:8px;margin-top:10px;box-shadow:var(--nm-inset);overflow:hidden}
+.sc-bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--emerald-2),var(--emerald));transition:width 1s cubic-bezier(.22,1,.36,1)}
+.sc-sub{font-size:11.5px;color:var(--ink-soft);font-weight:600;margin-top:8px}
+
+/* action-center header + count box */
+.ac-head2{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.ac-count-box{display:flex;align-items:center;gap:10px}
+.ac-count{font-family:var(--f-d);font-weight:800;font-size:22px;min-width:46px;height:46px;display:grid;place-items:center;border-radius:15px;box-shadow:var(--shadow-sm)}
+.ac-count.hot{color:var(--rose)} .ac-count.cool{color:var(--emerald)}
+.ac-count-lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-dim);line-height:1.4}
+.ac-count-lbl .ac-month{color:var(--ink-soft)}
+.ac-grid{margin-top:4px}
+
+/* mini flats list */
+.mini-flats{display:flex;flex-direction:column;gap:2px;max-height:280px;overflow-y:auto}
+.mf-row{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:14px;cursor:pointer;transition:.18s}
+.mf-row:hover{box-shadow:var(--nm-inset)}
+.mf-dot{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
+.mf-name{flex:1;min-width:0;font-weight:700;font-size:13.5px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mf-amt{font-family:var(--f-num);font-weight:700;font-size:12.5px;white-space:nowrap}
+.mf-row .chev{font-size:18px}
+
+@media(max-width:820px){.two-col{grid-template-columns:1fr}}
+
 /* print — whichever modal is open */
 @media print{
   body *{visibility:hidden!important}
