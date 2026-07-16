@@ -465,6 +465,44 @@ function renderDash(){
   renderDueTracker(ts);
   renderDuesDonut([{v:rentBal,c:"var(--rose)",l:"Rent"},{v:meterPend,c:"var(--cyan)",l:"Bijli"},{v:motorPend,c:"var(--ice)",l:"Motor"}]);
   renderFlatCompare(ts);
+  renderActionCenter(ts);
+}
+/* auto "action needed" for the current month — who to collect from vs who paid */
+function renderActionCenter(ts){
+  const box=document.getElementById("actionNeeded"); if(!box) return;
+  const cm=curMonth(); const ml=document.getElementById("acMonth"); if(ml) ml.textContent=monthLabel(cm);
+  const occ=ts.filter(t=>t.status!=="vacant");
+  const pend=[],done=[];
+  occ.forEach(t=>{ const got=DB.payments.filter(p=>p.tenantId===t.id&&p.forMonth===cm).reduce((s,p)=>s+(+p.amount||0),0);
+    const need=Math.max(0,(+t.rent||0)-got); const c=computeT(t);
+    if((+t.rent||0)>0 && need>0) pend.push({t,need,di:rentDueInfo(t),elec:c.elec,got});
+    else done.push({t,got}); });
+  pend.sort((a,b)=> (b.di.over-a.di.over) || (a.di.day-b.di.day));
+  const cnt=document.getElementById("acCount"); if(cnt){ cnt.textContent=pend.length; cnt.className="ac-count"+(pend.length?" hot":" cool"); }
+  document.getElementById("acEmpty").hidden=pend.length>0;
+  box.innerHTML=pend.map(({t,need,di,elec})=>`<div class="ac-card ${di.cls}" data-lvl="${di.cls}">
+      <span class="ac-brackets"></span>
+      <div class="ac-c-top"><span class="ac-ava">${initialOf(t)}</span>
+        <div class="ac-id"><div class="ac-name">${esc(t.room)}${t.name?' · '+esc(t.name):''}</div>
+          <div class="ac-due ${di.cls}"><span class="dc-dot"></span>${di.label}</div></div></div>
+      <div class="ac-amt">${money(need)}<span> rent baaki</span>${elec>0?`<em> · ${money(elec)} bijli</em>`:''}</div>
+      <div class="ac-actions">
+        <button class="btn sm ok" onclick="acCollect('${t.id}')">Mil gaya ✓</button>
+        <button class="btn sm ghost" onclick="waShare('${t.id}')">Remind</button>
+        <button class="btn sm ghost" onclick="openFlat('${t.id}')">Open</button>
+      </div></div>`).join("");
+  const dw=document.getElementById("acDoneWrap"), dl=document.getElementById("acDoneLbl"), dd=document.getElementById("actionDone");
+  if(dw){ dw.hidden=done.length===0;
+    if(dl) dl.textContent="Mil gaya ("+done.length+")";
+    if(dd) dd.innerHTML=done.map(({t,got})=>`<span class="ac-donechip" onclick="openFlat('${t.id}')">${esc(t.room)}${t.name?" · "+esc(t.name.split(' ')[0]):""} <b>${money(got)}</b> ✓</span>`).join(""); }
+}
+async function acCollect(tid){
+  const t=DB.tenants.find(x=>x.id===tid); if(!t) return; const cm=curMonth();
+  const got=DB.payments.filter(p=>p.tenantId===tid&&p.forMonth===cm).reduce((s,p)=>s+(+p.amount||0),0);
+  const need=Math.max(0,(+t.rent||0)-got); if(need<=0) return toast("Already paid ✓");
+  try{ await api("POST","/api/payments",{tenantId:tid,amount:need,date:today(),forMonth:cm,mode:"Cash",note:"quick collect"});
+    await refresh(); toast("Rent received 🎉"); launchConfetti(); openReceipt(tid,cm); }
+  catch(e){ toast(e.message,true); }
 }
 function renderFlatCompare(ts){
   const box=document.getElementById("flatCompare"); if(!box) return;
